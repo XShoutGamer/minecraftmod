@@ -11,7 +11,9 @@ public final class CelestiaConfig {
     public static final ModConfigSpec.IntValue LENGTH, WIDTH, ALTITUDE, CHARGE, DESCENT, RADIUS, DEPTH, CRACK_LENGTH, COOLDOWN, PERSIST, TERRAIN_BUDGET;
     public static final ModConfigSpec.BooleanValue TERRAIN, LIGHT, VISUAL_ONLY;
     public static final ModConfigSpec.DoubleValue PARTICLES, GLOW, SHAKE, FLASH, MOTION, EXPOSURE, DISTORTION, ATMOSPHERE;
-    public static final ModConfigSpec.BooleanValue REDUCED;
+    public static final ModConfigSpec.BooleanValue REDUCED, INVERT, REDUCED_FLASH, REDUCED_MOTION;
+    public static final ModConfigSpec.DoubleValue LIGHTNING, RIBBONS, INVERT_INTENSITY, CINEMATIC_SOUNDS;
+    public static final ModConfigSpec.IntValue LIGHTNING_DETAIL, PARTICLE_VARIETY, INVERT_TICKS, RESIDUAL_TICKS;
     public static final ModConfigSpec.IntValue VISUAL_RANGE, BLAST_RADIUS, SEAL_DIAMETER, BEAM_HEIGHT;
 
     static {
@@ -31,6 +33,7 @@ public final class CelestiaConfig {
         PERSIST = server.comment("Seconds embedded before solidification. -1 keeps the animated entity.").defineInRange("solidificationSeconds", 48, -1, 3600);
         VISUAL_ONLY = server.comment("Suppress damage, carving, lighting blocks and permanent placement.").define("visualOnly", false);
         TERRAIN_BUDGET = server.defineInRange("terrainEditsPerTick", 230, 80, 600);
+        CINEMATIC_SOUNDS = server.defineInRange("cinematicSoundIntensity", 1D, 0D, 1D);
         VOLUME = server.defineInRange("soundVolume", 1D, 0D, 1.5D);
         SERVER_SPEC = server.build();
 
@@ -48,6 +51,16 @@ public final class CelestiaConfig {
         BLAST_RADIUS = client.defineInRange("visualBlastRadius", 320, 60, 350);
         SEAL_DIAMETER = client.defineInRange("skySealDiameter", 180, 40, 200);
         BEAM_HEIGHT = client.defineInRange("beamHeight", 360, 80, 400);
+        LIGHTNING = client.defineInRange("lightningDensity", 1D, 0D, 1.5D);
+        LIGHTNING_DETAIL = client.defineInRange("lightningComplexity", 3, 1, 3);
+        RIBBONS = client.defineInRange("energyRibbonDensity", 1D, 0D, 1.5D);
+        PARTICLE_VARIETY = client.defineInRange("particleVariety", 4, 1, 4);
+        RESIDUAL_TICKS = client.defineInRange("residualEffectTicks", 480, 40, 1100);
+        INVERT = client.comment("Opt-in scene negative. Has no effect with reducedFlash enabled.").define("impactColorInversion", false);
+        INVERT_INTENSITY = client.defineInRange("colorInversionIntensity", 0.84D, 0D, 1D);
+        INVERT_TICKS = client.defineInRange("colorInversionTicks", 5, 2, 9);
+        REDUCED_FLASH = client.define("reducedFlash", false);
+        REDUCED_MOTION = client.define("reducedMotion", false);
         REDUCED = client.define("reducedEffects", false);
         CLIENT_SPEC = client.build();
     }

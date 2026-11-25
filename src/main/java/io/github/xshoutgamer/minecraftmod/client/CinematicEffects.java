@@ -16,8 +16,8 @@ import net.neoforged.neoforge.client.event.ViewportEvent;
 
 @EventBusSubscriber(modid = MinecraftMod.MOD_ID, value = Dist.CLIENT)
 public final class CinematicEffects {
-    private static final Impact NONE = new Impact(0, 0, 0, 0, null);
-    private record Impact(float exposure, float haze, float motion, float warp, Vec3 source) {}
+    private static final Impact NONE = new Impact(0, 0, 0, 0, 0, null);
+    private record Impact(float exposure, float haze, float motion, float warp, float inversion, Vec3 source) {}
 
     private CinematicEffects() {}
 
@@ -31,11 +31,11 @@ public final class CinematicEffects {
         var view = mc.gameRenderer.getMainCamera();
         var effect = sample(view.getPosition(), event.getPartialTick().getGameTimeDeltaPartialTick(false));
         float exposure = effect.exposure * CelestiaConfig.EXPOSURE.get().floatValue();
-        if (quality() == 4 && effect.source != null) {
+        if ((quality() == 4 || effect.inversion > 0) && effect.source != null) {
             float aspect = (float) mc.getWindow().getWidth() / Math.max(1, mc.getWindow().getHeight());
             var focus = screenFocus(view, effect.source, aspect);
             if (CelestialPost.render(mc, event.getPartialTick().getGameTimeDeltaTicks(), exposure,
-                    effect.warp, effect.haze, effect.motion, focus.x, focus.y)) return;
+                    effect.warp, effect.haze, effect.motion, effect.inversion, focus.x, focus.y)) return;
         }
         var gui = event.getGuiGraphics();
         int width = gui.guiWidth(), height = gui.guiHeight();
@@ -83,7 +83,7 @@ public final class CinematicEffects {
     private static Impact sample(Vec3 viewpoint, float partial) {
         var level = Minecraft.getInstance().level;
         if (level == null) return NONE;
-        float exposure = 0, haze = 0, motion = 0, warp = 0, nearest = Float.MAX_VALUE;
+        float exposure = 0, haze = 0, motion = 0, warp = 0, inversion = 0, nearest = Float.MAX_VALUE;
         Vec3 source = null;
         int range = Math.min(540, CelestiaConfig.VISUAL_RANGE.get());
         var area = new AABB(viewpoint, viewpoint).inflate(range);
@@ -109,6 +109,11 @@ public final class CinematicEffects {
                 }
                 case IMPACTING, EMBEDDED, SOLIDIFYING -> {
                     float transientLight = Math.max(0, 1 - age / 9F);
+                    if (CelestiaConfig.INVERT.get() && !CelestiaConfig.REDUCED_FLASH.get()) {
+                        float t = Mth.clamp(age / CelestiaConfig.INVERT_TICKS.get(), 0, 1);
+                        float envelope = 1 - t * t * (3 - 2 * t);
+                        inversion = Math.max(inversion, envelope * falloff * falloff);
+                    }
                     exposure = Math.max(exposure, falloff * falloff * transientLight * transientLight);
                     haze = Math.max(haze, falloff * (float) Math.exp(-age / 190F) * 0.56F);
                     motion = Math.max(motion, falloff * transientLight);
@@ -116,8 +121,12 @@ public final class CinematicEffects {
                 }
             }
         }
-        return new Impact(exposure * CelestiaConfig.FLASH.get().floatValue(), haze * CelestiaConfig.ATMOSPHERE.get().floatValue(),
-                motion * CelestiaConfig.MOTION.get().floatValue(), warp * CelestiaConfig.DISTORTION.get().floatValue(), source);
+        float flash = CelestiaConfig.REDUCED_FLASH.get() ? 0 : CelestiaConfig.FLASH.get().floatValue();
+        float movement = CelestiaConfig.REDUCED_MOTION.get() ? 0 : 1;
+        return new Impact(exposure * flash, haze * CelestiaConfig.ATMOSPHERE.get().floatValue(),
+                motion * CelestiaConfig.MOTION.get().floatValue() * movement,
+                warp * CelestiaConfig.DISTORTION.get().floatValue() * movement,
+                inversion * CelestiaConfig.INVERT_INTENSITY.get().floatValue(), source);
     }
 
     private static int color(float alpha, int rgb) {

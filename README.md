@@ -17,6 +17,16 @@ Use a disposable world for the first cast. Install the same mod version on the s
 - **Accessibility** — `glowIntensity`, `atmosphericIntensity`, `flashIntensity`, `exposureIntensity`, `distortionIntensity`, `cameraShakeIntensity`, and `motionStreakIntensity` are independent. Set any to zero to turn it off. `reducedEffects = true` uses the lowest geometry budget. Each impact has a single screen exposure pulse.
 - **Protection** — Terrain edits check world bounds, spawn protection, and NeoForge break and placement events. Add blocks to `minecraftmod:impact_immune` to protect them. Claim integration depends on the installed protection mod honoring those events. Placement preflights the whole monument and rolls back canceled placement.
 
+## Continuous currents and the VFX update
+
+The blue core, crystal and fracture blocks sample one animated world-space field. Adjacent faces share their phase and old monuments receive the new material when their chunks render. The golden terrain streams, helical currents and the larger shockwave crests are joined strips. Their bright pulses travel along the length of each path.
+
+The storm uses seeded divine, golden, crimson and residual lightning with different durations, widths and layers. Crimson bolts have an alpha-blended dark center and additive red edges. Lightning is visual and cannot start fires. New positional electrical sounds follow the server's existing cast timeline. `cinematicSoundIntensity` controls those extra layers.
+
+**Ultra Celestial** adds denser branching, extra glow passes, atmospheric loops, descending sparks, and terrain-following ribbons. In `minecraftmod-client.toml`, use `lightningDensity`, `lightningComplexity`, `energyRibbonDensity`, `particleVariety`, and `residualEffectTicks` to tune them. `impactColorInversion = true` enables a single short scene negative. `colorInversionIntensity` and `colorInversionTicks` control its strength and duration. It defaults to off. `reducedFlash` suppresses inversion and exposure, while `reducedMotion` suppresses camera shake, distortion, and motion effects. These settings are independent of the selected preset.
+
+World lighting comes from the existing luminous blocks and temporary impact light. Lightning halos, fog, and the fullscreen pass approximate surrounding illumination. Terrain ribbons follow the client heightmap, which can hide portions behind overhangs or in unloaded chunks.
+
 ## Build and run
 
 With JDK 21, run `./gradlew build` (Windows: `gradlew.bat build`). Put the JAR from `build/libs/` into the NeoForge profile's `mods` folder. Use `./gradlew runClient` or `./gradlew runServer` for development. A dedicated server requires acceptance of the Minecraft EULA.

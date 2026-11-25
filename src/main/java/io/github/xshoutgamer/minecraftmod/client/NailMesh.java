@@ -63,6 +63,22 @@ final class NailMesh {
         quad(rightCore, b, c, farRight, color, alpha, 0, -1);
     }
 
+    void joinedQuad(Point a, Point b, Point c, Point d, int color, float near, float far) {
+        if (Math.max(near, far) * opacity < .003F) return;
+        Point a1 = between(a, b, .35F), b1 = between(a, b, .65F);
+        Point d1 = between(d, c, .35F), c1 = between(d, c, .65F);
+        joinedBand(a, a1, d1, d, color, 0, near, far, 0);
+        joinedBand(a1, b1, c1, d1, color, near, near, far, far);
+        joinedBand(b1, b, c, c1, color, near, 0, 0, far);
+    }
+
+    private void joinedBand(Point a, Point b, Point c, Point d, int color, float aa, float ab, float ac, float ad) {
+        vertex(a, color, aa, 1, 0, 0);
+        vertex(b, color, ab, 1, 1, 0);
+        vertex(c, color, ac, 1, 1, 1);
+        vertex(d, color, ad, 1, 0, 1);
+    }
+
     private static Point between(Point a, Point b, float t) {
         return new Point(Mth.lerp(t, a.x, b.x), Mth.lerp(t, a.y, b.y), Mth.lerp(t, a.z, b.z));
     }

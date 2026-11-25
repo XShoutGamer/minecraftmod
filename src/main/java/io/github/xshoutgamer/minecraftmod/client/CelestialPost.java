@@ -19,7 +19,7 @@ final class CelestialPost {
     static void invalidate() { invalidated = true; }
 
     static boolean render(Minecraft client, float delta, float exposure, float distortion, float haze,
-                          float motion, float x, float y) {
+                          float motion, float inversion, float x, float y) {
         if (invalidated || target != client.getMainRenderTarget()) {
             if (effect != null) effect.close();
             effect = null;
@@ -27,7 +27,7 @@ final class CelestialPost {
             invalidated = false;
             unavailable = false;
         }
-        if (exposure < 0.003F && distortion < 0.003F && Math.abs(haze) < 0.003F && motion < 0.003F) return false;
+        if (exposure < 0.003F && distortion < 0.003F && Math.abs(haze) < 0.003F && motion < 0.003F && inversion < 0.003F) return false;
         if (unavailable) return false;
         try {
             if (effect == null) {
@@ -44,6 +44,7 @@ final class CelestialPost {
             effect.setUniform("Warp", distortion);
             effect.setUniform("Haze", haze);
             effect.setUniform("Motion", motion);
+            effect.setUniform("Inversion", inversion);
             effect.setUniform("FocusX", x);
             effect.setUniform("FocusY", y);
             effect.process(delta);

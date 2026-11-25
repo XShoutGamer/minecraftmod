@@ -3,6 +3,7 @@
 uniform sampler2D DiffuseSampler;
 uniform vec2 InSize;
 uniform float Exposure;
+uniform float Inversion;
 uniform float Warp;
 uniform float Haze;
 uniform float Motion;
@@ -25,6 +26,10 @@ void main() {
     float wave = sin(radius * 30.0 - Time * 6.283185) * exp(-radius * 1.35);
     vec2 uv = texCoord + direction * (Warp * wave * 0.022);
     vec3 color = scene(uv);
+    if (Warp > .002) {
+        color.r = mix(color.r, scene(uv + direction * Warp * .006).r, .44);
+        color.b = mix(color.b, scene(uv - direction * Warp * .006).b, .44);
+    }
 
     float blur = Motion * 0.031;
     vec3 radial = scene(uv + fromLight * blur * 0.35)
@@ -40,5 +45,6 @@ void main() {
     color *= 1.0 + Exposure * 0.48 + min(Haze, 0.0) * 0.68;
     color += bloom * vec3(0.68, 0.89, 1.0) + shafts * vec3(0.50, 0.68, 0.86);
     color = mix(color, vec3(0.83, 0.96, 1.0), clamp(Exposure * (0.7 + exp(-radius * 3.5) * 0.27), 0.0, 0.88));
+    color = mix(color, vec3(1.0) - clamp(color, 0.0, 1.0), Inversion);
     fragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
 }

@@ -1,6 +1,7 @@
 """Regenerate the original Celestia textures and positional audio."""
 from pathlib import Path
 import subprocess
+import sys
 
 import numpy as np
 from PIL import Image
@@ -66,6 +67,20 @@ def signal(name, duration, seed):
         for start in (0.02, 0.18, 0.33, 0.60, 0.73, 0.92, 1.35):
             age = np.maximum(0, t - start)
             wave += (t >= start) * np.exp(-24 * age) * (0.16 * noise + 0.6 * soft_noise + 0.18 * bass)
+    elif name in ("divine_arc", "crimson_arc", "golden_flow", "residual_arc"):
+        options = {
+            "divine_arc": (115, .14, .22, (.04,.18,.42,.61)),
+            "crimson_arc": (65, .26, .29, (.015,.08,.22,.49,.78)),
+            "golden_flow": (300, .06, .22, (.04,.31,.66)),
+            "residual_arc": (235, .10, .14, (.05,.19,.55)),
+        }
+        frequency, grit, resonance, impulses = options[name]
+        tone = np.sin(2*np.pi*(frequency*t + 18*np.sin(t*2.2)))
+        wave = ramp * (resonance * tone + .14 * chord) + .15 * soft_noise
+        for start in impulses:
+            age = np.maximum(t-start, 0)
+            wave += (t >= start) * np.exp(-17*age) * (grit*noise + .18*soft_noise)
+        wave *= .68
     elif name == "ambient":
         wave = ramp * (0.4 * chord + 0.25 * bass + 0.1 * air)
     elif name == "dissolve":
@@ -76,11 +91,14 @@ def signal(name, duration, seed):
     return np.clip(wave * fade, -0.98, 0.98).astype("<f4")
 
 
-def write_audio():
+def write_audio(selected=()):
     SOUNDS.mkdir(parents=True, exist_ok=True)
     cues = {"summon": 1.7, "gather": 1.1, "charge": 5.78, "descent": 0.82, "impact": 3.1,
-            "shockwave": 1.2, "fracture": 0.9, "ambient": 3.8, "dissolve": 1.8, "debris": 1.75, "rumble": 6.4, "release": 2.25}
+            "shockwave": 1.2, "fracture": 0.9, "ambient": 3.8, "dissolve": 1.8, "debris": 1.75, "rumble": 6.4, "release": 2.25,
+            "divine_arc": 2.4, "crimson_arc": 1.55, "golden_flow": 2.3, "residual_arc": 1.32}
     for i, (name, duration) in enumerate(cues.items()):
+        if selected and name not in selected:
+            continue
         samples = signal(name, duration, 3910 + i).tobytes()
         subprocess.run(
             ["ffmpeg", "-loglevel", "error", "-y", "-f", "f32le", "-ar", str(RATE), "-ac", "1",
@@ -90,5 +108,6 @@ def write_audio():
 
 
 if __name__ == "__main__":
-    write_textures()
-    write_audio()
+    if not sys.argv[1:]:
+        write_textures()
+    write_audio(sys.argv[1:])

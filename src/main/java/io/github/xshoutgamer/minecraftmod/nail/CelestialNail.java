@@ -169,6 +169,7 @@ public final class CelestialNail extends Entity {
                 }
             }
             case CHARGING -> {
+                if (age == 8 || age == chargeTicks - 40) cinematicSound(MinecraftMod.DIVINE_ARC.get(), 1.22F, false);
                 if (age < chargeTicks - 6) moveToY(skyY + Math.sin(age * 0.11) * 0.45);
                 if (age >= chargeTicks) {
                     releaseY = getY();
@@ -184,6 +185,8 @@ public final class CelestialNail extends Entity {
             case IMPACTING -> {
                 double progress = Math.min(1, age / 16.0);
                 moveToY(Mth.lerp(1 - (1 - progress) * (1 - progress), target().getY() + 1, baseY()));
+                if (age == 5) cinematicSound(MinecraftMod.GOLDEN_FLOW.get(), 1.1F, true);
+                if (age == 29) cinematicSound(MinecraftMod.CRIMSON_ARC.get(), .64F, true);
                 if (age == 8 || age == 21 || age == 39) sound(MinecraftMod.SHOCKWAVE.get(), 2F - age / 35F, true);
                 if (age == 4 && !visualOnly && CelestiaConfig.LIGHT.get()) light = ImpactTerrain.placeLight(level, owner(level), target(), craterDepth);
                 if (age == 12) sound(MinecraftMod.FRACTURE.get(), 2.9F, true);
@@ -195,6 +198,7 @@ public final class CelestialNail extends Entity {
                 }
             }
             case EMBEDDED -> {
+                if (age == 20 || age == 144 || age == 300) cinematicSound(MinecraftMod.RESIDUAL_ARC.get(), .72F, true);
                 if (age == 110 || age == 265) sound(MinecraftMod.RUMBLE.get(), age == 110 ? 1.6F : 0.8F, true);
                 if (age % 82 == 1) sound(MinecraftMod.AMBIENT.get(), 0.8F, true);
                 if (waitingToSolidify && age % 300 == 0 && owner(level) != null) {
@@ -221,6 +225,7 @@ public final class CelestialNail extends Entity {
         advance(Phase.IMPACTING);
         sound(MinecraftMod.IMPACT.get(), 4.8F, true);
         sound(MinecraftMod.RELEASE.get(), 2.2F, true);
+        cinematicSound(MinecraftMod.CRIMSON_ARC.get(), 1.3F, true);
         workTerrain(level);
         if (visualOnly) return;
         ServerPlayer owner = owner(level);
@@ -299,9 +304,19 @@ public final class CelestialNail extends Entity {
         entityData.set(AGE, 0);
     }
 
+    private void cinematicSound(SoundEvent cue, float volume, boolean ground) {
+        float gain = CelestiaConfig.CINEMATIC_SOUNDS.get().floatValue() * CelestiaConfig.VOLUME.get().floatValue();
+        if (gain <= 0) return;
+        double angle = (getUUID().getLeastSignificantBits() & 255) * Math.PI / 128 + phaseTicks * .07;
+        double reach = cue == MinecraftMod.DIVINE_ARC.get() ? 75 : cue == MinecraftMod.GOLDEN_FLOW.get() ? 32 : 12;
+        double y = ground ? target().getY() + 1 : getY() + modelHeight();
+        level().playSound(null, getX() + Math.cos(angle) * reach, y, getZ() + Math.sin(angle) * reach,
+                cue, SoundSource.PLAYERS, Math.min(1.8F, gain * volume), 1F);
+    }
+
     private void sound(SoundEvent sound, float volume, boolean ground) {
         float gain = CelestiaConfig.VOLUME.get().floatValue();
-        if (gain > 0) level().playSound(null, getX(), ground ? target().getY() + 1 : getY(), getZ(),
+        if (gain > 0 && volume > 0) level().playSound(null, getX(), ground ? target().getY() + 1 : getY(), getZ(),
                 sound, SoundSource.PLAYERS, volume * gain, 1F);
     }
 

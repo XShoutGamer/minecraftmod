@@ -106,5 +106,41 @@
         "attenuation_distance": 120
       }
     ]
+  },
+  "divine_arc": {
+    "subtitle": "subtitles.minecraftmod.divine_arc",
+    "sounds": [
+      {
+        "name": "minecraftmod:divine_arc",
+        "attenuation_distance": 155
+      }
+    ]
+  },
+  "crimson_arc": {
+    "subtitle": "subtitles.minecraftmod.crimson_arc",
+    "sounds": [
+      {
+        "name": "minecraftmod:crimson_arc",
+        "attenuation_distance": 105
+      }
+    ]
+  },
+  "golden_flow": {
+    "subtitle": "subtitles.minecraftmod.golden_flow",
+    "sounds": [
+      {
+        "name": "minecraftmod:golden_flow",
+        "attenuation_distance": 94
+      }
+    ]
+  },
+  "residual_arc": {
+    "subtitle": "subtitles.minecraftmod.residual_arc",
+    "sounds": [
+      {
+        "name": "minecraftmod:residual_arc",
+        "attenuation_distance": 55
+      }
+    ]
   }
 }

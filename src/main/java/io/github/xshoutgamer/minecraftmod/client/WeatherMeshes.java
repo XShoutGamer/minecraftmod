@@ -60,7 +60,7 @@ final class WeatherMeshes {
             float much = Mth.clamp((age + 2.1F) / 37, 0, 1);
             float spread = radius * (1 - (1 - much) * (1 - much));
             float fade = (1 - age / 48);
-            float flash = CelestiaConfig.FLASH.get().floatValue();
+            float flash = CelestiaConfig.REDUCED_FLASH.get() ? 0 : CelestiaConfig.FLASH.get().floatValue();
             hemisphere(mesh, y - 0.9F, spread, sides, quality >= 2 ? 15 : 7, CYAN, fade * 0.083F);
             hemisphere(mesh, y, spread * 0.78F, sides, quality >= 2 ? 11 : 5, WHITE, fade * (0.034F + flash * 0.09F));
             if (age < 12 && flash > 0) {

@@ -28,6 +28,10 @@ public final class MinecraftMod {
     public static final DeferredHolder<SoundEvent, SoundEvent> GATHER = sound("gather");
     public static final DeferredHolder<SoundEvent, SoundEvent> CHARGE = sound("charge");
     public static final DeferredHolder<SoundEvent, SoundEvent> DESCENT = sound("descent");
+    public static final DeferredHolder<SoundEvent, SoundEvent> DIVINE_ARC = sound("divine_arc");
+    public static final DeferredHolder<SoundEvent, SoundEvent> CRIMSON_ARC = sound("crimson_arc");
+    public static final DeferredHolder<SoundEvent, SoundEvent> GOLDEN_FLOW = sound("golden_flow");
+    public static final DeferredHolder<SoundEvent, SoundEvent> RESIDUAL_ARC = sound("residual_arc");
     public static final DeferredHolder<SoundEvent, SoundEvent> RELEASE = sound("release");
     public static final DeferredHolder<SoundEvent, SoundEvent> IMPACT = sound("impact");
     public static final DeferredHolder<SoundEvent, SoundEvent> SHOCKWAVE = sound("shockwave");

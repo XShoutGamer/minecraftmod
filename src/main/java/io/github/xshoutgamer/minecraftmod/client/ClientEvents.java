@@ -15,6 +15,7 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.RegisterShadersEvent;
+import net.neoforged.neoforge.client.event.ModelEvent;
 import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
 import net.neoforged.neoforge.client.event.ViewportEvent;
@@ -31,6 +32,9 @@ public final class ClientEvents {
 
     @EventBusSubscriber(modid = MinecraftMod.MOD_ID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
     public static final class Registration {
+        @SubscribeEvent
+        public static void materials(ModelEvent.ModifyBakingResult event) { FlowingBlockModel.wrap(event); }
+
         @SubscribeEvent
         public static void shaders(RegisterShadersEvent event) { CelestialRenderTypes.load(event); }
 
@@ -67,6 +71,7 @@ public final class ClientEvents {
 
         @SubscribeEvent
         public static void shake(ViewportEvent.ComputeCameraAngles event) {
+        if (CelestiaConfig.REDUCED_MOTION.get()) return;
             var level = Minecraft.getInstance().level;
             double scale = CelestiaConfig.SHAKE.get() * (CelestiaConfig.REDUCED.get() ? 0.55 : 1);
             if (level == null || scale == 0) return;

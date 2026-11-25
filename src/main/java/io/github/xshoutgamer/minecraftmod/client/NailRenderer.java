@@ -14,6 +14,9 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.client.Minecraft;
+import java.util.WeakHashMap;
 
 import static io.github.xshoutgamer.minecraftmod.client.NailMesh.*;
 
@@ -25,6 +28,9 @@ public final class NailRenderer extends EntityRenderer<CelestialNail> {
     private static final RenderType DUST =
             RenderType.entityTranslucent(MinecraftMod.id("textures/entity/celestial_dust.png"));
 
+    private static final RenderType DARK = RenderType.entityTranslucent(ENERGY);
+    private final WeakHashMap<CelestialNail, CelestialStorm> storms = new WeakHashMap<>();
+
     public NailRenderer(EntityRendererProvider.Context context) { super(context); }
 
     @Override
@@ -32,7 +38,7 @@ public final class NailRenderer extends EntityRenderer<CelestialNail> {
         double dx = x - nail.getX(), dy = y - nail.target().getY(), dz = z - nail.getZ();
         int limit = CelestiaConfig.VISUAL_RANGE.get();
         if (dx * dx + dz * dz > (double) limit * limit || Math.abs(dy) > limit) return false;
-        double radius = Math.max(CelestiaConfig.BLAST_RADIUS.get() * 1.27, CelestiaConfig.SEAL_DIAMETER.get() * 1.6);
+        double radius = Math.max(CelestiaConfig.BLAST_RADIUS.get() * 1.60, CelestiaConfig.SEAL_DIAMETER.get() * 1.82);
         return frustum.isVisible(new AABB(nail.getX() - radius, nail.target().getY() - 45, nail.getZ() - radius,
                 nail.getX() + radius, Math.max(nail.getY() + 255, nail.target().getY() + CelestiaConfig.BEAM_HEIGHT.get() + 10), nail.getZ() + radius));
     }
@@ -64,6 +70,12 @@ public final class NailRenderer extends EntityRenderer<CelestialNail> {
         float distance = (float) Math.sqrt(entityRenderDispatcher.distanceToSqr(nail));
         if (distance > 285) quality = Math.min(2, quality);
 
+        if (quality > 0 && intensity > 0 && CelestiaConfig.LIGHTNING.get() > 0) {
+            storms.computeIfAbsent(nail, entity -> new CelestialStorm(entity.getUUID().getMostSignificantBits()));
+        }
+        var camera = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition()
+                .subtract(nail.getX(), animatedY, nail.getZ());
+        var storm = quality == 0 ? null : storms.get(nail);
         poses.pushPose();
         poses.translate(0, animatedY - renderOrigin, 0);
         poses.pushPose();
@@ -71,8 +83,9 @@ public final class NailRenderer extends EntityRenderer<CelestialNail> {
         float motionTime = phase == CelestialNail.Phase.SOLIDIFYING
                 ? time - age * (1 - recession) : time;
         monument(new NailMesh(poses, buffers.getBuffer(SOLID), false, visibility), motionTime, recession);
-        core(new NailMesh(poses, buffers.getBuffer(GLOW), true, visibility * intensity * (0.16F + 0.84F * recession)),
-                motionTime, pulse, reduced);
+        var emissive = new NailMesh(poses, buffers.getBuffer(GLOW), true, visibility * intensity * (0.16F + 0.84F * recession));
+        core(emissive, motionTime, pulse, reduced);
+        if (quality >= 2) EnergyChoreography.channel(emissive, time, .88F);
         poses.popPose();
 
         if (phase.ordinal() < CelestialNail.Phase.IMPACTING.ordinal()) {
@@ -87,41 +100,52 @@ public final class NailRenderer extends EntityRenderer<CelestialNail> {
                 WeatherMeshes.star(sky, nail.modelHeight() + 2, 74 + 95 * charge, time, 0.18F + 0.53F * charge,
                         quality, true);
                 summoning(sky, phase, age, time, pulse, reduced);
+                if (storm != null && phase != CelestialNail.Phase.SUMMONING) {
+                    float skyAge = (phase == CelestialNail.Phase.CHARGING ? 16 : 0) + age;
+                    storm.frame(true, skyAge, time, nail.modelHeight() + 5, CelestiaConfig.SEAL_DIAMETER.get() * 1.13F,
+                            quality, camera).glow(sky);
+                }
+                if (quality >= 2) EnergyChoreography.sky(sky, camera, nail.modelHeight() + 4, time, intensity, charge, quality);
             }
         } else {
             float surface = nail.surfaceAge() + partial;
             var glow = new NailMesh(poses, buffers.getBuffer(GLOW), true, visibility * intensity * recession);
             WeatherMeshes.impact(glow, vertical, surface, time, nail.radius(), quality);
-            groundFront(nail, glow, vertical, surface, quality);
+            var discharge = storm == null ? null : storm.frame(false, surface, time, vertical + 3,
+                    CelestiaConfig.BLAST_RADIUS.get() * .9F, quality, camera);
+            if (discharge != null) discharge.glow(glow);
+            if (quality >= 2) EnergyChoreography.land(nail, glow, camera, vertical, surface, time, quality);
+            groundFront(nail, glow, vertical, surface, time, quality);
             aftermath(glow, vertical, floor(nail, 0, 0, vertical), surface, time, nail.radius(), reduced);
             if (distance < 300 && recession > 0.04F) {
                 fractures(nail, glow, vertical, surface, time, reduced);
                 if (!reduced && surface < 36) arcs(glow, vertical, surface, time);
                 particles(poses, buffers, vertical, surface, time, visibility * recession, quality);
             }
+            if (discharge != null && surface < 43) {
+                discharge.darkCenters(new NailMesh(poses, buffers.getBuffer(DARK), false, intensity * recession));
+            }
         }
         poses.popPose();
     }
 
 
-    private static void groundFront(CelestialNail nail, NailMesh mesh, float y, float age, int quality) {
+    private static void groundFront(CelestialNail nail, NailMesh mesh, float y, float age, float time, int quality) {
         if (age > 110 || quality == 0) return;
         int steps = quality > 2 ? 96 : 48;
         for (int wave = 0; wave < 3; wave++) {
             float t = (age - wave * 11) / (65 + 8F * wave);
             if (t < 0 || t >= 1) continue;
             float r = (3 + CelestiaConfig.BLAST_RADIUS.get() * (0.86F + wave * 0.05F)) * (1 - (1 - t) * (1 - t));
-            Point last = polar(0, 0, 0, r, 0);
-            float lastY = floor(nail, last.x(), last.z(), y) + 0.28F;
-            float alpha = (1 - t) * (wave == 0 ? 0.84F : .48F);
-            for (int i = 1; i <= steps; i++) {
+            Vec3[] crest = new Vec3[steps + 1];
+            for (int i = 0; i < steps; i++) {
                 Point next = polar(0, 0, 0, r, Math.PI * 2 * i / steps);
-                float nextY = floor(nail, next.x(), next.z(), y) + 0.28F;
-                ribbon(mesh, last.x(), lastY, last.z(), next.x(), nextY, next.z(), 0.32F + t * 2.1F,
-                        wave % 2 == 0 ? CYAN : GOLD, alpha);
-                last = next;
-                lastY = nextY;
+                crest[i] = new Vec3(next.x(), floor(nail, next.x(), next.z(), y) + 0.31F, next.z());
             }
+            crest[steps] = crest[0];
+            float alpha = (1 - t) * (wave == 0 ? 0.84F : .48F);
+            EnergyPath.render(mesh, crest, null, .32F + t * 2.1F, alpha,
+                    wave % 2 == 0 ? CYAN : GOLD, time * .16F, 1.05F, false);
         }
     }
 
@@ -260,7 +284,7 @@ public final class NailRenderer extends EntityRenderer<CelestialNail> {
             mesh.beam(floor, columnHeight * 0.89F, 13.2F, 0.45F, -time * 0.02, BLUE, beam * 0.42F);
             mesh.beam(floor, columnHeight * 0.96F, 1.45F, 0.21F, time * 0.075, WHITE, beam * 0.7F);
         }
-        float flash = CelestiaConfig.FLASH.get().floatValue();
+        float flash = CelestiaConfig.REDUCED_FLASH.get() ? 0 : CelestiaConfig.FLASH.get().floatValue();
         if (age < 11 && flash > 0) {
             float fade = (1 - age / 11) * flash;
             mesh.section(0, y - 0.6F, 0, 16, 3.2F, 0.4F, 12, 0, WHITE, CYAN, fade * 0.84F);
@@ -304,7 +328,7 @@ public final class NailRenderer extends EntityRenderer<CelestialNail> {
         }
     }
 
-    private static float floor(CelestialNail nail, float x, float z, float y) {
+    static float floor(CelestialNail nail, float x, float z, float y) {
         var origin = nail.target();
         var pos = origin.offset(Mth.floor(x + 0.5F), 0, Mth.floor(z + 0.5F));
         if (!nail.level().hasChunkAt(pos)) return y;

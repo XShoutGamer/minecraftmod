@@ -75,13 +75,24 @@ def crystal(frame=0):
     return Image.fromarray(np.uint8(np.clip(rgb,0,255)))
 
 
-def fracture(frame):
-    phase = frame*np.pi/4
-    seam = np.abs(X-.5-.16*np.sin(Y*9)-.05*np.sin(Y*32))
-    side = np.abs(X-.46-.25*np.sin(Y*7+1.8))
-    brightness = np.exp(-seam**2*1080)*(.76+.22*np.sin(Y*17-phase)) + .3*np.exp(-side**2*2600)
-    base = np.asarray(surface((45,55,60),grain()*.78))
-    return Image.fromarray(np.uint8(np.clip(base + brightness[...,None]*np.array([82,190,198]),0,255)))
+def current(frame, kind, frames=12):
+    """A common periodic field. Each adjacent block samples only its world-space window."""
+    size = 256
+    y, x = np.mgrid[:size, :size] / (size - 1)
+    time = frame * 2 * np.pi / frames
+    twist = 2 * np.pi * (x + 0.17*np.sin(2*np.pi*y - time) + .052*np.sin(6*np.pi*y + time))
+    narrow = (0.5 + .5*np.cos(twist - .55))**39
+    halo = (0.5 + .5*np.cos(twist - .55))**7
+    narrow += .39*(.5 + .5*np.cos(twist + 2.5))**46
+    golden = (0.5 + .5*np.cos(twist + .17 + .19*np.sin(4*np.pi*y + time)))**62
+    pulse = .72 + .15*np.cos(6*np.pi*y - time) + .13*np.cos(10*np.pi*y + 2*time)
+    distortion = .8*np.sin(2*np.pi*x*4 + 2*np.pi*y*9) + 1.2*np.cos(2*np.pi*x*3 - 2*np.pi*y*14)
+    base = {'crystal': (19,47,67), 'core': (12,35,51), 'fracture': (26,39,45)}[kind]
+    cyan = np.array([86,208,240]) * (0.90 if kind == 'fracture' else 1.)
+    light = (narrow*.80 + halo*.29) * pulse
+    image = (np.array(base) + distortion[...,None] + light[...,None]*cyan
+             + (golden*halo*(.23+.17*np.cos(4*np.pi*y+time)))[...,None]*np.array([156,108,40]))
+    return Image.fromarray(np.uint8(np.clip(image,0,255)))
 
 
 def write():
@@ -97,14 +108,17 @@ def write():
     atlas.save(entity / "celestial_materials.png")
     for name, tile in [
         ("celestial_stone", stone), ("engraved_celestial_stone", sigils),
-        ("celestial_frame", alloy), ("celestial_crystal", ice),
+        ("celestial_frame", alloy),
     ]:
         tile.resize((128,128), Image.Resampling.LANCZOS).save(blocks / f"{name}.png")
-    for name, render in [("luminous_core", crystal), ("celestial_fracture", fracture)]:
-        strip = Image.new("RGB", (128, 1024))
-        for frame in range(8):
-            strip.paste(render(frame).resize((128,128), Image.Resampling.LANCZOS),(0,128*frame))
-        strip.save(blocks / f"{name}.png")
+    for name, kind in [('luminous_core', 'core'), ('celestial_crystal', 'crystal'), ('celestial_fracture', 'fracture')]:
+        strip = Image.new('RGB', (512, 256*12))
+        for frame in range(12):
+            tile = current(frame, kind)
+            strip.paste(tile, (0, 256*frame))
+            strip.paste(tile, (256, 256*frame))
+        strip.save(blocks / f'{name}.png')
+        (blocks / f'{name}.png.mcmeta').write_text('{"animation":{"width":512,"height":256,"frametime":3,"interpolate":true}}\n')
     distance = np.sqrt(((X-.5)*2)**2+((Y-.5)*2)**2)
     cloud = np.maximum(0, 1-distance)**1.9 * np.clip(.95 + grain()*.016, .53, 1)
     dust = Image.new("RGBA", (SIZE,SIZE),(232,244,255,0))
