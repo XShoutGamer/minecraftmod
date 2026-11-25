@@ -14,14 +14,15 @@ RATE = 44100
 def write_textures():
     TEXTURES.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(840122)
-    y, x = np.mgrid[:64, :64]
+    y, x = np.mgrid[:256, :256]
     stratum = 4 * np.sin(x * 0.23 + y * 0.41) + 5 * np.sin(y * 0.48 - x * 0.08)
     grain = rng.normal(0, 2.8, x.shape)
-    borders = np.minimum(x, 63 - x)
+    borders = np.minimum(x, 255 - x)
     veins = np.maximum(0, np.cos(x * 0.25 + y * 0.68 + np.sin(y * 0.21)) - 0.92) * 88
     base = np.clip(241 + stratum + grain + veins - np.maximum(0, 3 - borders) * 3, 208, 255)
     Image.fromarray(base.astype(np.uint8)).convert("RGBA").save(TEXTURES / "celestial_stone.png")
     Image.new("RGBA", (4, 4), (255, 255, 255, 255)).save(TEXTURES / "celestial_energy.png")
+    y, x = np.mgrid[:64, :64]
     d = ((x - 31.5) ** 2 + (y - 31.5) ** 2) / 31.5 ** 2
     dust = np.full((64, 64, 4), 255, dtype=np.uint8)
     dust[:, :, 3] = (np.maximum(0, 1 - d) ** 2 * 255).astype(np.uint8)
@@ -44,11 +45,19 @@ def signal(name, duration, seed):
     elif name == "gather":
         wave = ramp * (0.23 * chord + 0.21 * air * (0.6 + 0.4 * np.sin(t * 42)))
     elif name == "charge":
-        wave = ramp * (0.55 * bass + 0.32 * chord + 0.23 * soft_noise) * (0.75 + 0.25 * np.sin(t * 12))
-        wave *= np.clip((0.96 - u) * 14, 0, 1)
+        swell = np.sin(2 * np.pi * (70 * t + 24 * t * u * u))
+        pulses = 0.72 + 0.28 * np.sin(2 * np.pi * (1.4 * t + 7 * t * u * u))
+        wave = u ** 0.55 * (0.43 * bass + 0.29 * chord + 0.18 * swell + 0.13 * soft_noise) * pulses
+        wave *= np.clip((0.985 - u) * 25, 0, 1)
     elif name == "descent":
         glide = np.sin(2 * np.pi * (218 * t - 75 * t * t))
         wave = np.sin(np.pi * u) ** 0.6 * (0.52 * glide + (0.12 + u) * soft_noise + 0.15 * air)
+    elif name == "release":
+        chord_sweep = sum(np.sin(2 * np.pi * (f * t - 6.5 * t * t)) for f in (246, 369, 552, 739)) / 4
+        wave = (0.45 * chord_sweep + 0.25 * soft_noise) * np.exp(-2.1 * t)
+        for delay in (0.18, 0.41, 0.66):
+            n = int(delay * RATE)
+            wave[n:] += 0.07 * chord_sweep[:-n] * np.exp(-5 * t[:-n])
     elif name == "impact":
         wave = np.exp(-2.5 * t) * (0.58 * bass + 1.1 * soft_noise + 0.24 * chord)
         wave += 0.16 * noise * np.exp(-35 * t)
@@ -82,8 +91,8 @@ def signal(name, duration, seed):
 
 def write_audio():
     SOUNDS.mkdir(parents=True, exist_ok=True)
-    cues = {"summon": 1.7, "gather": 1.1, "charge": 3.0, "descent": 1.3, "impact": 3.1,
-            "shockwave": 1.2, "fracture": 0.9, "ambient": 3.8, "dissolve": 1.8, "debris": 1.75, "rumble": 4.7}
+    cues = {"summon": 1.7, "gather": 1.1, "charge": 5.78, "descent": 0.82, "impact": 3.1,
+            "shockwave": 1.2, "fracture": 0.9, "ambient": 3.8, "dissolve": 1.8, "debris": 1.75, "rumble": 6.4, "release": 2.25}
     for i, (name, duration) in enumerate(cues.items()):
         samples = signal(name, duration, 3910 + i).tobytes()
         subprocess.run(

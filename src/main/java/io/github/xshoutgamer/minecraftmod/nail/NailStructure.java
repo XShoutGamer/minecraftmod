@@ -22,9 +22,10 @@ final class NailStructure {
 
     static boolean place(ServerLevel level, ServerPlayer owner, CelestialNail nail, boolean terrain, BlockPos light) {
         if (owner == null) return false;
-        int baseY = Math.max(level.getMinBuildHeight(), (int) Math.floor(nail.getY()));
+        int baseY = nail.baseY();
         var base = new BlockPos(nail.target().getX(), baseY, nail.target().getZ());
-        var layout = layout(base, Math.round(nail.modelHeight()));
+        var layout = layout(base, Math.round(nail.modelHeight()), nail.modelWidth());
+        if (terrain) addFoundation(level, base, layout);
         List<BlockSnapshot> snapshots = new ArrayList<>(layout.size());
         for (BlockPos pos : layout.keySet()) {
             if (level.isOutsideBuildHeight(pos) || !level.hasChunkAt(pos)
@@ -62,20 +63,26 @@ final class NailStructure {
         }
     }
 
-    private static Map<BlockPos, BlockState> layout(BlockPos base, int height) {
+    static Map<BlockPos, BlockState> layout(BlockPos base, int height, int width) {
         Map<BlockPos, BlockState> layout = new LinkedHashMap<>();
+        double centerOffset = width % 2 == 0 ? 0 : 0.5;
+        int min = -width / 2, max = min + width;
         for (int y = 0; y < height; y++) {
-            double f = y / (double) (height - 1);
-            int radius = f < 0.11 || f > 0.96 ? 0 : f < 0.28 || f > 0.84 ? 1 : 2;
-            boolean collar = in(f, 0.30, 0.38) || in(f, 0.69, 0.75) || in(f, 0.82, 0.90);
-            if (collar) radius = 3;
-            for (int x = -radius; x <= radius; x++) {
-                for (int z = -radius; z <= radius; z++) {
-                    int d = Math.abs(x) + Math.abs(z);
-                    if (d > radius + (radius > 1 ? 1 : 0)) continue;
-                    var block = f < 0.30 || f > 0.93 ? CelestialBlocks.CRYSTAL.get() : CelestialBlocks.STONE.get();
-                    if (d == 0 || (d == radius && (x == 0 || z == 0))) block = CelestialBlocks.CORE.get();
-                    if (collar && d > 0) block = (d == radius + 1 ? CelestialBlocks.FRAME : CelestialBlocks.ENGRAVED).get();
+            double elevation = (y + 0.5) / height;
+            double radius = Math.max(0.76, width * NailProfile.widthAt(elevation) * 0.5);
+            boolean collar = (elevation > .32 && elevation < .39) || (elevation > .82 && elevation < .89);
+            boolean crystalline = elevation < .28 || elevation > .93;
+            for (int x = min; x < max; x++) {
+                for (int z = min; z < max; z++) {
+                    double dx = x + .5 - centerOffset, dz = z + .5 - centerOffset;
+                    double distance = Math.hypot(dx, dz);
+                    if (distance > radius) continue;
+                    boolean edge = distance >= radius - 0.9;
+                    boolean channel = (Math.abs(dx) < 0.55 || Math.abs(dz) < 0.55) && y % 5 != 2;
+                    var block = crystalline ? CelestialBlocks.CRYSTAL.get() : CelestialBlocks.STONE.get();
+                    if (distance < 0.76 || (edge && channel)) block = CelestialBlocks.CORE.get();
+                    else if (collar && edge) block = CelestialBlocks.FRAME.get();
+                    else if (edge && (y % 7 == 2 || y % 7 == 3)) block = CelestialBlocks.ENGRAVED.get();
                     layout.put(base.offset(x, y, z), block.defaultBlockState());
                 }
             }
@@ -83,7 +90,12 @@ final class NailStructure {
         return layout;
     }
 
-    private static boolean in(double value, double minimum, double maximum) {
-        return value >= minimum && value <= maximum;
+    private static void addFoundation(ServerLevel level, BlockPos base, Map<BlockPos, BlockState> layout) {
+        if (!level.hasChunkAt(base)) return;
+        for (int down = 1; down <= 20; down++) {
+            BlockPos support = base.below(down);
+            if (level.isOutsideBuildHeight(support) || !level.isEmptyBlock(support)) break;
+            layout.put(support, CelestialBlocks.FRACTURE.get().defaultBlockState());
+        }
     }
 }

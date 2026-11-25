@@ -14,6 +14,9 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.event.RegisterShadersEvent;
+import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
+import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
 import net.neoforged.neoforge.client.event.ViewportEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.registration.NetworkRegistry;
@@ -28,6 +31,14 @@ public final class ClientEvents {
 
     @EventBusSubscriber(modid = MinecraftMod.MOD_ID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
     public static final class Registration {
+        @SubscribeEvent
+        public static void shaders(RegisterShadersEvent event) { CelestialRenderTypes.load(event); }
+
+        @SubscribeEvent
+        public static void reload(RegisterClientReloadListenersEvent event) {
+            event.registerReloadListener((ResourceManagerReloadListener) resources -> CelestialPost.invalidate());
+        }
+
         @SubscribeEvent
         public static void keys(RegisterKeyMappingsEvent event) { event.register(CAST); }
 
@@ -61,9 +72,9 @@ public final class ClientEvents {
             if (level == null || scale == 0) return;
             var camera = event.getCamera().getPosition();
             double strength = 0, clock = level.getGameTime() + event.getPartialTick();
-            for (var nail : level.getEntitiesOfClass(CelestialNail.class, new AABB(camera, camera).inflate(260))) {
+            for (var nail : level.getEntitiesOfClass(CelestialNail.class, new AABB(camera, camera).inflate(360))) {
                 double distance = camera.distanceTo(net.minecraft.world.phys.Vec3.atCenterOf(nail.target()));
-                double falloff = Math.max(0, 1 - distance / 220);
+                double falloff = Math.max(0, 1 - distance / 350);
                 double pulse = switch (nail.phase()) {
                     case CHARGING -> 0.12;
                     case DESCENDING -> 0.35;

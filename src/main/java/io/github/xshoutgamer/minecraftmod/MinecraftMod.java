@@ -22,12 +22,13 @@ public final class MinecraftMod {
 
     public static final DeferredHolder<EntityType<?>, EntityType<CelestialNail>> NAIL = ENTITIES.register("celestial_nail",
             () -> EntityType.Builder.<CelestialNail>of(CelestialNail::new, MobCategory.MISC)
-                    .sized(2.5F, 40F).clientTrackingRange(32).updateInterval(1).fireImmune().build(id("celestial_nail").toString()));
+                    .sized(8F, 60F).clientTrackingRange(48).updateInterval(1).fireImmune().build(id("celestial_nail").toString()));
 
     public static final DeferredHolder<SoundEvent, SoundEvent> SUMMON = sound("summon");
     public static final DeferredHolder<SoundEvent, SoundEvent> GATHER = sound("gather");
     public static final DeferredHolder<SoundEvent, SoundEvent> CHARGE = sound("charge");
     public static final DeferredHolder<SoundEvent, SoundEvent> DESCENT = sound("descent");
+    public static final DeferredHolder<SoundEvent, SoundEvent> RELEASE = sound("release");
     public static final DeferredHolder<SoundEvent, SoundEvent> IMPACT = sound("impact");
     public static final DeferredHolder<SoundEvent, SoundEvent> SHOCKWAVE = sound("shockwave");
     public static final DeferredHolder<SoundEvent, SoundEvent> FRACTURE = sound("fracture");
@@ -50,6 +51,6 @@ public final class MinecraftMod {
     }
 
     private static DeferredHolder<SoundEvent, SoundEvent> sound(String name) {
-        return SOUNDS.register(name, () -> SoundEvent.createFixedRangeEvent(id(name), 384F));
+        return SOUNDS.register(name, () -> SoundEvent.createFixedRangeEvent(id(name), 640F));
     }
 }

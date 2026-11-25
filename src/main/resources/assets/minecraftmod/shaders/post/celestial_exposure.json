@@ -1,0 +1,7 @@
+{
+  "targets": ["celestial_scene"],
+  "passes": [
+    { "name": "minecraftmod:celestial_exposure", "intarget": "minecraft:main", "outtarget": "celestial_scene", "bilinear": true },
+    { "name": "minecraft:blit", "intarget": "celestial_scene", "outtarget": "minecraft:main" }
+  ]
+}

@@ -38,6 +38,7 @@ public final class CelestialNail extends Entity {
     private static final EntityDataAccessor<Integer> SURFACE_AGE = intData();
     private static final EntityDataAccessor<Integer> CHARGE_DURATION = intData();
     private static final EntityDataAccessor<Integer> RADIUS = intData();
+    private static final EntityDataAccessor<Integer> WIDTH = intData();
     private static final EntityDataAccessor<Integer> CRACK_LENGTH = intData();
     private static final EntityDataAccessor<Float> HEIGHT =
             SynchedEntityData.defineId(CelestialNail.class, EntityDataSerializers.FLOAT);
@@ -50,11 +51,11 @@ public final class CelestialNail extends Entity {
 
     private UUID ownerId;
     private double skyY;
-    private double fallSpeed;
-    private double speedCap;
+    private double releaseY;
+    private int descentTicks;
     private int phaseTicks, chargeTicks, persistenceTicks, craterDepth;
     private int craterCursor, crackCursor;
-    private boolean terrain;
+    private boolean terrain, visualOnly;
     private boolean waitingToSolidify;
     private BlockPos light;
     private List<FracturePattern.Column> crater;
@@ -78,10 +79,11 @@ public final class CelestialNail extends Entity {
         builder.define(AGE, 0);
         builder.define(SURFACE_AGE, 0);
         builder.define(TARGET, BlockPos.ZERO);
-        builder.define(RADIUS, 40);
-        builder.define(CHARGE_DURATION, 60);
-        builder.define(CRACK_LENGTH, 26);
-        builder.define(HEIGHT, 24F);
+        builder.define(RADIUS, 15);
+        builder.define(WIDTH, 8);
+        builder.define(CHARGE_DURATION, 120);
+        builder.define(CRACK_LENGTH, 145);
+        builder.define(HEIGHT, 60F);
         builder.define(PREVIOUS_Y, 0F);
         builder.define(VISUAL_Y, 0F);
     }
@@ -91,15 +93,18 @@ public final class CelestialNail extends Entity {
         entityData.set(TARGET, target);
         entityData.set(RADIUS, CelestiaConfig.RADIUS.get());
         entityData.set(CRACK_LENGTH, CelestiaConfig.CRACK_LENGTH.get());
-        entityData.set(HEIGHT, CelestiaConfig.HEIGHT.get().floatValue());
-        speedCap = CelestiaConfig.SPEED.get();
+        entityData.set(HEIGHT, CelestiaConfig.LENGTH.get().floatValue());
+        entityData.set(WIDTH, CelestiaConfig.WIDTH.get());
+        descentTicks = CelestiaConfig.DESCENT.get();
         chargeTicks = CelestiaConfig.CHARGE.get();
         entityData.set(CHARGE_DURATION, chargeTicks);
         persistenceTicks = CelestiaConfig.PERSIST.get() == -1 ? -1 : CelestiaConfig.PERSIST.get() * 20;
         craterDepth = CelestiaConfig.DEPTH.get();
-        terrain = CelestiaConfig.TERRAIN.get();
-        skyY = Math.min(target.getY() + CelestiaConfig.ALTITUDE.get(), level().getMaxBuildHeight() + 64);
-        setPos(target.getX() + 0.5, skyY, target.getZ() + 0.5);
+        visualOnly = CelestiaConfig.VISUAL_ONLY.get();
+        terrain = !visualOnly && CelestiaConfig.TERRAIN.get();
+        skyY = Math.min(target.getY() + CelestiaConfig.ALTITUDE.get(), level().getMaxBuildHeight() + 192);
+        releaseY = skyY;
+        setPos(target.getX() + centerOffset(), skyY, target.getZ() + centerOffset());
         setOldPosAndRot();
         resetVisualY();
     }
@@ -109,6 +114,11 @@ public final class CelestialNail extends Entity {
     public int surfaceAge() { return entityData.get(SURFACE_AGE); }
     public float modelHeight() { return entityData.get(HEIGHT); }
     public int chargeTicks() { return entityData.get(CHARGE_DURATION); }
+    public int modelWidth() { return entityData.get(WIDTH); }
+    public double centerOffset() { return modelWidth() % 2 == 0 ? 0 : 0.5; }
+    public int baseY() {
+        return terrain ? Math.max(level().getMinBuildHeight(), target().getY() + 1 - (int) modelHeight() / 2) : target().getY() + 1;
+    }
     public int radius() { return entityData.get(RADIUS); }
     public BlockPos target() { return entityData.get(TARGET); }
 
@@ -129,7 +139,7 @@ public final class CelestialNail extends Entity {
 
     @Override
     public boolean shouldRenderAtSqrDistance(double distance) {
-        return distance < 448 * 448;
+        return distance < 768 * 768;
     }
 
     @Override
@@ -140,7 +150,7 @@ public final class CelestialNail extends Entity {
         if (phase() != Phase.EMBEDDED) entityData.set(AGE, age);
         entityData.set(PREVIOUS_Y, entityData.get(VISUAL_Y));
         if (phase() == Phase.IMPACTING || phase() == Phase.EMBEDDED || phase() == Phase.SOLIDIFYING) {
-            entityData.set(SURFACE_AGE, Math.min(720, surfaceAge() + 1));
+            entityData.set(SURFACE_AGE, Math.min(1200, surfaceAge() + 1));
             workTerrain(level);
         }
         switch (phase()) {
@@ -161,45 +171,43 @@ public final class CelestialNail extends Entity {
             case CHARGING -> {
                 if (age < chargeTicks - 6) moveToY(skyY + Math.sin(age * 0.11) * 0.45);
                 if (age >= chargeTicks) {
+                    releaseY = getY();
                     advance(Phase.DESCENDING);
-                    sound(MinecraftMod.DESCENT.get(), 3.4F, false);
+                    sound(MinecraftMod.DESCENT.get(), 3.2F, false);
                 }
             }
             case DESCENDING -> {
-                fallSpeed = Math.min(speedCap, fallSpeed + 1.65 + age * 0.22);
-                double ground = target().getY() + 0.85;
-                moveToY(Math.max(ground, getY() - fallSpeed));
-                if (getY() <= ground) impact(level);
+                double ground = target().getY() + 1;
+                moveToY(NailProfile.descent(releaseY, ground, age / (double) descentTicks));
+                if (age >= descentTicks) impact(level);
             }
             case IMPACTING -> {
-                double embed = terrain ? craterDepth + modelHeight() * 0.42 : 0.6;
-                double buriedY = terrain
-                        ? Math.max(level.getMinBuildHeight() + 1, target().getY() + 0.85 - embed)
-                        : target().getY() + 1;
-                double progress = Math.min(1, age / 24.0);
-                moveToY(Mth.lerp(1 - (1 - progress) * (1 - progress), target().getY() + 0.85, buriedY));
+                double progress = Math.min(1, age / 16.0);
+                moveToY(Mth.lerp(1 - (1 - progress) * (1 - progress), target().getY() + 1, baseY()));
                 if (age == 8 || age == 21 || age == 39) sound(MinecraftMod.SHOCKWAVE.get(), 2F - age / 35F, true);
-                if (age == 4 && CelestiaConfig.LIGHT.get()) light = ImpactTerrain.placeLight(level, owner(level), target(), craterDepth);
+                if (age == 4 && !visualOnly && CelestiaConfig.LIGHT.get()) light = ImpactTerrain.placeLight(level, owner(level), target(), craterDepth);
                 if (age == 12) sound(MinecraftMod.FRACTURE.get(), 2.9F, true);
                 if (age == 15) sound(MinecraftMod.DEBRIS.get(), 2.4F, true);
                 if (age == 22) sound(MinecraftMod.RUMBLE.get(), 3.9F, true);
                 if (age >= IMPACT_TICKS) {
                     advance(Phase.EMBEDDED);
-                    if (light == null && CelestiaConfig.LIGHT.get()) light = ImpactTerrain.placeLight(level, owner(level), target(), craterDepth);
+                    if (light == null && !visualOnly && CelestiaConfig.LIGHT.get()) light = ImpactTerrain.placeLight(level, owner(level), target(), craterDepth);
                 }
             }
             case EMBEDDED -> {
+                if (age == 110 || age == 265) sound(MinecraftMod.RUMBLE.get(), age == 110 ? 1.6F : 0.8F, true);
                 if (age % 82 == 1) sound(MinecraftMod.AMBIENT.get(), 0.8F, true);
                 if (waitingToSolidify && age % 300 == 0 && owner(level) != null) {
                     advance(Phase.SOLIDIFYING);
-                } else if (!waitingToSolidify && persistenceTicks >= 0 && age >= persistenceTicks) {
+                } else if (!waitingToSolidify && persistenceTicks >= 0 && age >= persistenceTicks
+                        && (!terrain || (crater != null && craterCursor >= crater.size() && crackCursor >= cuts.size()))) {
                     advance(Phase.SOLIDIFYING);
                     sound(MinecraftMod.DISSOLVE.get(), 1.7F, true);
                 } else if (age >= 72000) phaseTicks = 1;
             }
             case SOLIDIFYING -> {
                 if (age >= SOLIDIFY_TICKS) {
-                    if (NailStructure.place(level, owner(level), this, terrain, light)) discard();
+                    if (visualOnly || NailStructure.place(level, owner(level), this, terrain, light)) discard();
                     else {
                         waitingToSolidify = true;
                         advance(Phase.EMBEDDED);
@@ -211,8 +219,10 @@ public final class CelestialNail extends Entity {
 
     private void impact(ServerLevel level) {
         advance(Phase.IMPACTING);
-        sound(MinecraftMod.IMPACT.get(), 6.5F, true);
+        sound(MinecraftMod.IMPACT.get(), 4.8F, true);
+        sound(MinecraftMod.RELEASE.get(), 2.2F, true);
         workTerrain(level);
+        if (visualOnly) return;
         ServerPlayer owner = owner(level);
         double damage = CelestiaConfig.DAMAGE.get();
         if (damage <= 0) return;
@@ -234,24 +244,37 @@ public final class CelestialNail extends Entity {
         if (!terrain) return;
         ServerPlayer owner = owner(level);
         if (owner == null) return;
-        if (crater == null) crater = FracturePattern.crater(getUUID().getMostSignificantBits(), radius(), craterDepth);
-        for (int blocks = 0; blocks < 125 && craterCursor < crater.size();) {
-            var column = crater.get(craterCursor++);
-            var floor = ImpactTerrain.surface(level, target(), column.x(), column.z());
-            if (column.depth() < 0) ImpactTerrain.rim(level, owner, floor, -column.depth());
-            else ImpactTerrain.cut(level, owner, floor, column.depth());
-            blocks += 2 + Math.abs(column.depth());
-        }
+        if (crater == null) crater = FracturePattern.crater(getUUID().getMostSignificantBits(), radius(), craterDepth,
+                target().getY() + 1 - baseY(), modelWidth());
+        int budget = CelestiaConfig.TERRAIN_BUDGET.get();
         if (cuts == null) cuts = FracturePattern.cuts(cracks(), radius());
-        for (int budget = 0; budget < 6 && crackCursor < cuts.size(); budget++) {
+        // Share the budget between the bowl and the outward-moving front.
+        int crackBudget = craterCursor < crater.size() ? budget / 2 : budget;
+        int spent = 0;
+        while (crackCursor < cuts.size()) {
             var cut = cuts.get(crackCursor);
-            if (cut.delay() > surfaceAge()) break;
+            int cost = cut.depth() + 2;
+            if (cut.delay() > surfaceAge() || spent + cost > crackBudget) break;
             crackCursor++;
+            spent += cost;
             var floor = ImpactTerrain.surface(level, target(), cut.x(), cut.z());
-            ImpactTerrain.cut(level, owner, floor, cut.depth());
-            if (floor != null && crackCursor % 4 == 0) ImpactTerrain.residue(level, owner, floor.below(cut.depth() - 1));
+            int removed = ImpactTerrain.cut(level, owner, floor, cut.depth());
+            if (floor != null && removed >= cut.depth() && crackCursor % 9 == 0) {
+                ImpactTerrain.residue(level, owner, floor.below(removed - 1));
+            }
         }
-        if (surfaceAge() == 44) ImpactTerrain.scatterRubble(level, owner, target(), radius(), getUUID().getMostSignificantBits());
+        while (craterCursor < crater.size()) {
+            var column = crater.get(craterCursor);
+            int cost = column.depth() + 2;
+            if (spent + cost > budget) break;
+            craterCursor++;
+            spent += cost;
+            var floor = ImpactTerrain.surface(level, target(), column.x(), column.z());
+            int removed = ImpactTerrain.cut(level, owner, floor, column.depth());
+            if (floor != null && removed >= column.depth() && column.depth() >= craterDepth - 4 && craterCursor % 13 == 0) {
+                ImpactTerrain.residue(level, owner, floor.below(removed - 1));
+            }
+        }
     }
 
     private ServerPlayer owner(ServerLevel level) {
@@ -300,8 +323,10 @@ public final class CelestialNail extends Entity {
         tag.putInt("Cracks", entityData.get(CRACK_LENGTH));
         tag.putFloat("Height", modelHeight());
         tag.putDouble("Sky", skyY);
-        tag.putDouble("FallSpeed", fallSpeed);
-        tag.putDouble("SpeedCap", speedCap);
+        tag.putDouble("ReleaseY", releaseY);
+        tag.putInt("Descent", descentTicks);
+        tag.putInt("Width", modelWidth());
+        tag.putBoolean("VisualOnly", visualOnly);
         tag.putInt("Charge", chargeTicks);
         tag.putInt("Persistence", persistenceTicks);
         tag.putInt("Depth", craterDepth);
@@ -324,8 +349,10 @@ public final class CelestialNail extends Entity {
         entityData.set(CRACK_LENGTH, tag.getInt("Cracks"));
         entityData.set(HEIGHT, tag.getFloat("Height"));
         skyY = tag.getDouble("Sky");
-        fallSpeed = tag.getDouble("FallSpeed");
-        speedCap = tag.getDouble("SpeedCap");
+        releaseY = tag.contains("ReleaseY") ? tag.getDouble("ReleaseY") : getY();
+        descentTicks = tag.contains("Descent") ? Math.max(1, tag.getInt("Descent")) : 7;
+        entityData.set(WIDTH, tag.contains("Width") ? tag.getInt("Width") : 8);
+        visualOnly = tag.getBoolean("VisualOnly");
         chargeTicks = tag.getInt("Charge");
         entityData.set(CHARGE_DURATION, chargeTicks);
         persistenceTicks = tag.getInt("Persistence");

@@ -4,7 +4,7 @@
     "sounds": [
       {
         "name": "minecraftmod:summon",
-        "attenuation_distance": 104
+        "attenuation_distance": 170
       }
     ]
   },
@@ -13,7 +13,7 @@
     "sounds": [
       {
         "name": "minecraftmod:gather",
-        "attenuation_distance": 104
+        "attenuation_distance": 170
       }
     ]
   },
@@ -22,7 +22,7 @@
     "sounds": [
       {
         "name": "minecraftmod:charge",
-        "attenuation_distance": 104
+        "attenuation_distance": 170
       }
     ]
   },
@@ -31,7 +31,7 @@
     "sounds": [
       {
         "name": "minecraftmod:descent",
-        "attenuation_distance": 104
+        "attenuation_distance": 170
       }
     ]
   },
@@ -40,7 +40,7 @@
     "sounds": [
       {
         "name": "minecraftmod:impact",
-        "attenuation_distance": 36
+        "attenuation_distance": 95
       }
     ]
   },
@@ -95,6 +95,15 @@
       {
         "name": "minecraftmod:debris",
         "attenuation_distance": 55
+      }
+    ]
+  },
+  "release": {
+    "subtitle": "subtitles.minecraftmod.release",
+    "sounds": [
+      {
+        "name": "minecraftmod:release",
+        "attenuation_distance": 120
       }
     ]
   }
