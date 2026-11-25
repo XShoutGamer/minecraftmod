@@ -29,10 +29,12 @@ public record NailCast() implements CustomPacketPayload {
         if (!player.isAlive() || player.isSpectator()) return;
         var level = player.serverLevel();
         long now = level.getServer().overworld().getGameTime();
+        boolean cooldownEnabled = NailCooldown.enabled(level.getServer());
         // World time is shared across dimensions. Player data survives disconnects.
         var data = player.getPersistentData();
         var persisted = data.getCompound(Player.PERSISTED_NBT_TAG);
-        if (now < persisted.getLong(COOLDOWN_KEY) || now < data.getLong("minecraftmod.nextAttempt")) return;
+        if (now < data.getLong("minecraftmod.nextAttempt")
+                || (cooldownEnabled && now < persisted.getLong(COOLDOWN_KEY))) return;
         data.putLong("minecraftmod.nextAttempt", now + 4);
 
         var eye = player.getEyePosition();
@@ -58,7 +60,7 @@ public record NailCast() implements CustomPacketPayload {
 
         var nail = new CelestialNail(MinecraftMod.NAIL.get(), level);
         nail.begin(player, target);
-        if (level.addFreshEntity(nail)) {
+        if (level.addFreshEntity(nail) && cooldownEnabled) {
             persisted.putLong(COOLDOWN_KEY, now + 20L * CelestiaConfig.COOLDOWN.get());
             data.put(Player.PERSISTED_NBT_TAG, persisted);
         }

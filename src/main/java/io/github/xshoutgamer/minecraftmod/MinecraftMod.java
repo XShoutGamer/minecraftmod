@@ -2,6 +2,7 @@ package io.github.xshoutgamer.minecraftmod;
 
 import io.github.xshoutgamer.minecraftmod.nail.CelestialNail;
 import io.github.xshoutgamer.minecraftmod.nail.NailCast;
+import io.github.xshoutgamer.minecraftmod.nail.NailCooldown;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
@@ -11,6 +12,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
+import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
@@ -46,6 +48,7 @@ public final class MinecraftMod {
         SOUNDS.register(bus);
         CelestialBlocks.register(bus);
         bus.addListener(NailCast::register);
+        NeoForge.EVENT_BUS.addListener(NailCooldown::register);
         container.registerConfig(ModConfig.Type.SERVER, CelestiaConfig.SERVER_SPEC);
         container.registerConfig(ModConfig.Type.CLIENT, CelestiaConfig.CLIENT_SPEC);
     }
