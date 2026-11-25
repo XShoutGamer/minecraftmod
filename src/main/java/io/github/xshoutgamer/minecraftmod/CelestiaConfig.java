@@ -12,7 +12,7 @@ public final class CelestiaConfig {
     public static final ModConfigSpec.BooleanValue TERRAIN, LIGHT, VISUAL_ONLY;
     public static final ModConfigSpec.DoubleValue PARTICLES, GLOW, SHAKE, FLASH, MOTION, EXPOSURE, DISTORTION, ATMOSPHERE;
     public static final ModConfigSpec.BooleanValue REDUCED, INVERT, REDUCED_FLASH, REDUCED_MOTION;
-    public static final ModConfigSpec.DoubleValue LIGHTNING, RIBBONS, INVERT_INTENSITY, CINEMATIC_SOUNDS;
+    public static final ModConfigSpec.DoubleValue LIGHTNING, RIBBONS, MONOCHROME_STRENGTH, CINEMATIC_SOUNDS;
     public static final ModConfigSpec.IntValue LIGHTNING_DETAIL, PARTICLE_VARIETY, INVERT_TICKS, RESIDUAL_TICKS;
     public static final ModConfigSpec.IntValue VISUAL_RANGE, BLAST_RADIUS, SEAL_DIAMETER, BEAM_HEIGHT;
 
@@ -69,8 +69,8 @@ public final class CelestiaConfig {
         RIBBONS = client.defineInRange("energyRibbonDensity", 1D, 0D, 1.5D);
         PARTICLE_VARIETY = client.defineInRange("particleVariety", 4, 1, 4);
         RESIDUAL_TICKS = client.defineInRange("residualEffectTicks", 480, 40, 1100);
-        INVERT = client.comment("Brief impact negative. Has no effect with reducedFlash enabled.").define("impactColorInversion", true);
-        INVERT_INTENSITY = client.defineInRange("colorInversionIntensity", 0.84D, 0D, 1D);
+        INVERT = client.comment("Brief impact grayscale. Legacy key retained for existing profiles.").define("impactColorInversion", true);
+        MONOCHROME_STRENGTH = client.defineInRange("impactMonochromeStrength", 1D, 0D, 1D);
         INVERT_TICKS = client.defineInRange("colorInversionTicks", 5, 2, 9);
         REDUCED_FLASH = client.define("reducedFlash", false);
         REDUCED_MOTION = client.define("reducedMotion", false);

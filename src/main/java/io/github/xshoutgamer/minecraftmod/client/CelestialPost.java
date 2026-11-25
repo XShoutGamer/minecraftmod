@@ -13,7 +13,7 @@ final class CelestialPost {
     private static RenderTarget target;
     private static volatile boolean invalidated = true;
     private static boolean unavailable;
-    private static boolean wasInverting;
+    private static boolean wasMonochrome;
     private static int width, height;
 
     private CelestialPost() {}
@@ -21,17 +21,17 @@ final class CelestialPost {
     static void invalidate() { invalidated = true; }
 
     static boolean render(Minecraft client, float delta, float exposure, float distortion, float haze,
-                          float motion, float inversion, float x, float y) {
+                          float motion, float monochrome, float x, float y) {
         if (invalidated || target != client.getMainRenderTarget()) {
             if (effect != null) effect.close();
             effect = null;
             target = client.getMainRenderTarget();
             invalidated = false;
             unavailable = false;
-            wasInverting = false;
+            wasMonochrome = false;
         }
-        if (inversion < .003F) wasInverting = false;
-        if (exposure < 0.003F && distortion < 0.003F && Math.abs(haze) < 0.003F && motion < 0.003F && inversion < 0.003F) return false;
+        if (monochrome < .003F) wasMonochrome = false;
+        if (exposure < 0.003F && distortion < 0.003F && Math.abs(haze) < 0.003F && motion < 0.003F && monochrome < 0.003F) return false;
         if (unavailable) return false;
         try {
             if (effect == null) {
@@ -49,16 +49,16 @@ final class CelestialPost {
             effect.setUniform("Warp", distortion);
             effect.setUniform("Haze", haze);
             effect.setUniform("Motion", motion);
-            effect.setUniform("Inversion", inversion);
+            effect.setUniform("Monochrome", monochrome);
             effect.setUniform("FocusX", x);
             effect.setUniform("FocusY", y);
             RenderSystem.disableBlend();
             RenderSystem.disableDepthTest();
             RenderSystem.resetTextureMatrix();
             effect.process(delta);
-            if (inversion > .003F && !wasInverting) {
-                ImpactPulse.diagnostics("framebuffer inversion rendered");
-                wasInverting = true;
+            if (monochrome > .003F && !wasMonochrome) {
+                ImpactPulse.diagnostics("framebuffer monochrome rendered");
+                wasMonochrome = true;
             }
             return true;
         } catch (IOException | RuntimeException failure) {

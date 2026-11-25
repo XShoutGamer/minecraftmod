@@ -17,7 +17,7 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 
-/** Composites the original crimson geometry after the negative, with world depth intact. */
+/** Composites the original crimson geometry after the grayscale pass, with world depth intact. */
 @EventBusSubscriber(modid = MinecraftMod.MOD_ID, value = Dist.CLIENT)
 public final class CrimsonLayer {
     private static final RenderType GLOW = CelestialRenderTypes.energy(MinecraftMod.id("textures/entity/celestial_energy.png"));

@@ -3,7 +3,7 @@
 uniform sampler2D DiffuseSampler;
 uniform vec2 InSize;
 uniform float Exposure;
-uniform float Inversion;
+uniform float Monochrome;
 uniform float Warp;
 uniform float Haze;
 uniform float Motion;
@@ -46,6 +46,7 @@ void main() {
     color += bloom * vec3(0.68, 0.89, 1.0) + shafts * vec3(0.50, 0.68, 0.86);
     color = mix(color, vec3(0.83, 0.96, 1.0), clamp(Exposure * (0.7 + exp(-radius * 3.5) * 0.27), 0.0, 0.88));
     vec3 original = scene(texCoord);
-    color = mix(color, vec3(1.0) - original, Inversion);
+    float luminance = dot(original, vec3(0.2126, 0.7152, 0.0722));
+    color = mix(color, vec3(luminance), Monochrome);
     fragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
 }

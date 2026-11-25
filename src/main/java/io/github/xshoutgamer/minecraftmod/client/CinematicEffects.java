@@ -40,13 +40,13 @@ public final class CinematicEffects {
         var effect = sample(view.getPosition(), event.getPartialTick().getGameTimeDeltaPartialTick(false));
         float exposure = effect.exposure * CelestiaConfig.EXPOSURE.get().floatValue();
         var pulse = ImpactPulse.sample();
-        float negative = pulse == null ? 0 : pulse.intensity();
+        float monochrome = pulse == null ? 0 : pulse.intensity();
         Vec3 focusSource = pulse == null ? effect.source : pulse.source();
-        if ((quality() == 4 || negative > 0) && focusSource != null) {
+        if ((quality() == 4 || monochrome > 0) && focusSource != null) {
             float aspect = (float) mc.getWindow().getWidth() / Math.max(1, mc.getWindow().getHeight());
             var focus = screenFocus(view, focusSource, aspect);
             if (CelestialPost.render(mc, event.getPartialTick().getGameTimeDeltaTicks(), exposure,
-                    effect.warp, effect.haze, effect.motion, negative, focus.x, focus.y)) return;
+                    effect.warp, effect.haze, effect.motion, monochrome, focus.x, focus.y)) return;
         }
         var gui = event.getGuiGraphics();
         int width = gui.guiWidth(), height = gui.guiHeight();

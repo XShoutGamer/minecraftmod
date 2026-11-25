@@ -33,7 +33,7 @@ public final class ImpactPulse {
         if (SEEN.size() > 64) SEEN.removeFirst();
         diagnostics("received impact " + packet.nail());
         if (!CelestiaConfig.INVERT.get() || CelestiaConfig.REDUCED_FLASH.get()) {
-            diagnostics("inversion skipped by client accessibility settings");
+            diagnostics("monochrome skipped by client accessibility settings");
             return;
         }
         if (active != null) return;
@@ -41,7 +41,7 @@ public final class ImpactPulse {
         double distance = mc.gameRenderer.getMainCamera().getPosition().distanceTo(source);
         double fadeDistance = Math.min(540, CelestiaConfig.VISUAL_RANGE.get());
         float falloff = (float) Mth.clamp(1 - Math.max(0, distance - 120) / Math.max(1, fadeDistance - 120), 0, 1);
-        float strength = falloff * CelestiaConfig.INVERT_INTENSITY.get().floatValue();
+        float strength = falloff * CelestiaConfig.MONOCHROME_STRENGTH.get().floatValue();
         if (strength < .01F) return;
         start(source, packet.entityId(), strength, CelestiaConfig.INVERT_TICKS.get(), CelestiaConfig.INVERT_RECOVERY.get());
     }
@@ -55,7 +55,7 @@ public final class ImpactPulse {
 
     private static void start(Vec3 source, int entityId, float strength, int ticks, int recovery) {
         active = new Pulse(source, entityId, strength, ticks, Math.min(ticks, recovery), System.nanoTime(), 0);
-        diagnostics("inversion queued for " + ticks + " ticks at " + strength);
+        diagnostics("monochrome queued for " + ticks + " ticks at " + strength);
     }
 
     static boolean pending() {
@@ -78,7 +78,7 @@ public final class ImpactPulse {
                     && world.getEntity(active.entityId) instanceof CelestialNail nail
                     && nail.phase().ordinal() < CelestialNail.Phase.IMPACTING.ordinal()) return null;
             active = new Pulse(active.source, active.entityId, active.strength, active.ticks, active.recovery, active.received, now);
-            diagnostics("inversion began on rendered frame");
+            diagnostics("monochrome began on rendered frame");
         }
         double elapsed = (now - active.started) / NANOS_PER_TICK;
         if (elapsed >= active.ticks) {
@@ -97,7 +97,7 @@ public final class ImpactPulse {
     }
 
     static void clear() {
-        if (active != null) diagnostics("inversion cleared");
+        if (active != null) diagnostics("monochrome cleared");
         active = null;
     }
 
