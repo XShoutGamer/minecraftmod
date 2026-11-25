@@ -44,10 +44,39 @@ final class ImpactTerrain {
         int i = 0;
         for (; i < depth; i++) {
             BlockPos pos = surface.below(i);
-            if (level.isOutsideBuildHeight(pos) || protectedBlock(level, owner, pos)) break;
-            if (!level.isEmptyBlock(pos)) level.removeBlock(pos, false);
+            if (level.isOutsideBuildHeight(pos)) break;
+            if (level.isEmptyBlock(pos)) continue;
+            if (protectedBlock(level, owner, pos)) break;
+            level.removeBlock(pos, false);
         }
         return i;
+    }
+
+    static void clearDescent(ServerLevel level, ServerPlayer owner, CelestialNail nail, int bottom, int top) {
+        int low = Math.max(bottom, level.getMinBuildHeight());
+        int high = Math.min(top, level.getMaxBuildHeight());
+        if (low >= high) return;
+
+        BlockPos target = nail.target();
+        double center = nail.centerOffset();
+        double radius = Math.max(6, nail.modelWidth() * 0.5 + 1.5);
+        int extent = (int) Math.ceil(radius);
+        var pos = new BlockPos.MutableBlockPos();
+        for (int x = -extent; x <= extent; x++) {
+            for (int z = -extent; z <= extent; z++) {
+                double dx = x + .5 - center, dz = z + .5 - center;
+                if (dx * dx + dz * dz > radius * radius) continue;
+                pos.set(target.getX() + x, low, target.getZ() + z);
+                if (!level.hasChunkAt(pos) || !level.getWorldBorder().isWithinBounds(pos)) continue;
+                int surface = level.getHeight(Heightmap.Types.WORLD_SURFACE, pos.getX(), pos.getZ());
+                for (int y = Math.min(high, surface) - 1; y >= low; y--) {
+                    pos.setY(y);
+                    if (level.isEmptyBlock(pos)) continue;
+                    var block = pos.immutable();
+                    if (!protectedBlock(level, owner, block)) level.removeBlock(block, false);
+                }
+            }
+        }
     }
 
     static BlockPos placeLight(ServerLevel level, ServerPlayer owner, BlockPos center, int depth) {

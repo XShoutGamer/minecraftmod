@@ -8,7 +8,11 @@ public final class CelestiaConfig {
     public static final ModConfigSpec SERVER_SPEC;
     public static final ModConfigSpec CLIENT_SPEC;
     public static final ModConfigSpec.DoubleValue DAMAGE, VOLUME;
-    public static final ModConfigSpec.IntValue LENGTH, WIDTH, ALTITUDE, CHARGE, DESCENT, RADIUS, DEPTH, CRACK_LENGTH, COOLDOWN, PERSIST, TERRAIN_BUDGET;
+    public static final int DEFAULT_CRATER_RADIUS = 22;
+    private static final int LEGACY_CRATER_RADIUS = 15;
+    private static final ModConfigSpec.IntValue RADIUS, LEGACY_RADIUS;
+    public static final ModConfigSpec.IntValue LENGTH, WIDTH, ALTITUDE, CHARGE, DESCENT, DEPTH, CRACK_LENGTH, COOLDOWN, PERSIST;
+    public static final ModConfigSpec.IntValue CRATER_BUDGET, FRACTURE_BUDGET;
     public static final ModConfigSpec.BooleanValue TERRAIN, LIGHT, VISUAL_ONLY;
     public static final ModConfigSpec.DoubleValue PARTICLES, GLOW, SHAKE, FLASH, MOTION, EXPOSURE, DISTORTION, ATMOSPHERE;
     public static final ModConfigSpec.BooleanValue REDUCED, MONOCHROME, REDUCED_FLASH, REDUCED_MOTION;
@@ -27,7 +31,10 @@ public final class CelestiaConfig {
         ALTITUDE = server.defineInRange("castingAltitude", 200, 32, 240);
         CHARGE = server.comment("Ticks spent charging after materialization and levitation.").defineInRange("chargeDurationTicks", 120, 20, 200);
         DESCENT = server.defineInRange("descentDurationTicks", 7, 4, 24);
-        RADIUS = server.defineInRange("excavationRadius", 15, 8, 28);
+        RADIUS = server.comment("Impact crater radius in blocks (8–40). Zero uses the default (22) or a customized legacy excavationRadius.")
+                .defineInRange("craterRadius", 0, 0, 40);
+        LEGACY_RADIUS = server.comment("Legacy crater setting, superseded by a nonzero craterRadius.")
+                .defineInRange("excavationRadius", LEGACY_CRATER_RADIUS, 8, 28);
         DEPTH = server.defineInRange("excavationDepth", 50, 12, 64);
         CRACK_LENGTH = server.defineInRange("fractureRange", 145, 20, 155);
         COOLDOWN = server.defineInRange("cooldownSeconds", 20, 1, 600);
@@ -36,7 +43,10 @@ public final class CelestiaConfig {
         LIGHT = server.comment("Place a temporary vanilla light block near the impact if permitted.").define("environmentLighting", true);
         PERSIST = server.comment("Seconds embedded before solidification. -1 keeps the animated entity.").defineInRange("solidificationSeconds", 48, -1, 3600);
         VISUAL_ONLY = server.comment("Suppress damage, carving, lighting blocks and permanent placement.").define("visualOnly", false);
-        TERRAIN_BUDGET = server.defineInRange("terrainEditsPerTick", 230, 80, 600);
+        CRATER_BUDGET = server.comment("Block work budget per Nail per tick for the impact crater.")
+                .defineInRange("craterEditsPerTick", 3200, 80, 4800);
+        FRACTURE_BUDGET = server.comment("Block work budget per Nail per tick for the spreading fractures.")
+                .defineInRange("terrainEditsPerTick", 230, 80, 600);
         CINEMATIC_SOUNDS = server.defineInRange("cinematicSoundIntensity", 1D, 0D, 1D);
         VOLUME = server.defineInRange("soundVolume", 1D, 0D, 1.5D);
         SERVER_SPEC = server.build();
@@ -76,6 +86,13 @@ public final class CelestiaConfig {
         REDUCED_MOTION = client.define("reducedMotion", false);
         REDUCED = client.define("reducedEffects", false);
         CLIENT_SPEC = client.build();
+    }
+
+    public static int craterRadius() {
+        int configured = RADIUS.get();
+        if (configured != 0) return Math.max(8, configured);
+        int legacy = LEGACY_RADIUS.get();
+        return legacy == LEGACY_CRATER_RADIUS ? DEFAULT_CRATER_RADIUS : legacy;
     }
 
     private CelestiaConfig() {}

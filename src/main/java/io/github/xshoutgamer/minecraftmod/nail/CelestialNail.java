@@ -79,7 +79,7 @@ public final class CelestialNail extends Entity {
         builder.define(AGE, 0);
         builder.define(SURFACE_AGE, 0);
         builder.define(TARGET, BlockPos.ZERO);
-        builder.define(RADIUS, 15);
+        builder.define(RADIUS, CelestiaConfig.DEFAULT_CRATER_RADIUS);
         builder.define(WIDTH, 8);
         builder.define(CHARGE_DURATION, 120);
         builder.define(CRACK_LENGTH, 145);
@@ -91,7 +91,7 @@ public final class CelestialNail extends Entity {
     void begin(ServerPlayer owner, BlockPos target) {
         ownerId = owner.getUUID();
         entityData.set(TARGET, target);
-        entityData.set(RADIUS, CelestiaConfig.RADIUS.get());
+        entityData.set(RADIUS, CelestiaConfig.craterRadius());
         entityData.set(CRACK_LENGTH, CelestiaConfig.CRACK_LENGTH.get());
         entityData.set(HEIGHT, CelestiaConfig.LENGTH.get().floatValue());
         entityData.set(WIDTH, CelestiaConfig.WIDTH.get());
@@ -179,8 +179,14 @@ public final class CelestialNail extends Entity {
                 }
             }
             case DESCENDING -> {
-                double ground = target().getY() + 1;
-                moveToY(NailProfile.descent(releaseY, ground, age / (double) descentTicks));
+                int ground = target().getY() + 1;
+                double nextY = NailProfile.descent(releaseY, ground, age / (double) descentTicks);
+                ServerPlayer owner = terrain ? owner(level) : null;
+                if (owner != null) {
+                    int top = age == 1 ? Mth.ceil(releaseY + modelHeight()) : Mth.floor(getY());
+                    ImpactTerrain.clearDescent(level, owner, this, Math.max(ground, Mth.floor(nextY)), top);
+                }
+                moveToY(nextY);
                 if (age >= descentTicks) impact(level);
             }
             case IMPACTING -> {
@@ -253,32 +259,30 @@ public final class CelestialNail extends Entity {
         if (owner == null) return;
         if (crater == null) crater = FracturePattern.crater(getUUID().getMostSignificantBits(), radius(), craterDepth,
                 target().getY() + 1 - baseY(), modelWidth());
-        int budget = CelestiaConfig.TERRAIN_BUDGET.get();
-        if (cuts == null) cuts = FracturePattern.cuts(cracks(), radius());
-        // Share the budget between the bowl and the outward-moving front.
-        int crackBudget = craterCursor < crater.size() ? budget / 2 : budget;
-        int spent = 0;
-        while (crackCursor < cuts.size()) {
-            var cut = cuts.get(crackCursor);
-            int cost = cut.depth() + 2;
-            if (cut.delay() > surfaceAge() || spent + cost > crackBudget) break;
-            crackCursor++;
-            spent += cost;
-            var floor = ImpactTerrain.surface(level, target(), cut.x(), cut.z());
-            int removed = ImpactTerrain.cut(level, owner, floor, cut.depth());
-            if (floor != null && removed >= cut.depth() && crackCursor % 9 == 0) {
-                ImpactTerrain.residue(level, owner, floor.below(removed - 1));
-            }
-        }
+        int remaining = CelestiaConfig.CRATER_BUDGET.get();
         while (craterCursor < crater.size()) {
             var column = crater.get(craterCursor);
             int cost = column.depth() + 2;
-            if (spent + cost > budget) break;
+            if (cost > remaining) break;
             craterCursor++;
-            spent += cost;
+            remaining -= cost;
             var floor = ImpactTerrain.surface(level, target(), column.x(), column.z());
             int removed = ImpactTerrain.cut(level, owner, floor, column.depth());
             if (floor != null && removed >= column.depth() && column.depth() >= craterDepth - 4 && craterCursor % 13 == 0) {
+                ImpactTerrain.residue(level, owner, floor.below(removed - 1));
+            }
+        }
+        if (cuts == null) cuts = FracturePattern.cuts(cracks(), radius());
+        remaining = CelestiaConfig.FRACTURE_BUDGET.get();
+        while (crackCursor < cuts.size()) {
+            var cut = cuts.get(crackCursor);
+            int cost = cut.depth() + 2;
+            if (cut.delay() > surfaceAge() || cost > remaining) break;
+            crackCursor++;
+            remaining -= cost;
+            var floor = ImpactTerrain.surface(level, target(), cut.x(), cut.z());
+            int removed = ImpactTerrain.cut(level, owner, floor, cut.depth());
+            if (floor != null && removed >= cut.depth() && crackCursor % 9 == 0) {
                 ImpactTerrain.residue(level, owner, floor.below(removed - 1));
             }
         }
