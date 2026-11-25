@@ -1,6 +1,7 @@
 package io.github.xshoutgamer.minecraftmod.client;
 
 import com.mojang.blaze3d.pipeline.RenderTarget;
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.logging.LogUtils;
 import io.github.xshoutgamer.minecraftmod.MinecraftMod;
 import java.io.IOException;
@@ -12,6 +13,7 @@ final class CelestialPost {
     private static RenderTarget target;
     private static volatile boolean invalidated = true;
     private static boolean unavailable;
+    private static boolean wasInverting;
     private static int width, height;
 
     private CelestialPost() {}
@@ -26,7 +28,9 @@ final class CelestialPost {
             target = client.getMainRenderTarget();
             invalidated = false;
             unavailable = false;
+            wasInverting = false;
         }
+        if (inversion < .003F) wasInverting = false;
         if (exposure < 0.003F && distortion < 0.003F && Math.abs(haze) < 0.003F && motion < 0.003F && inversion < 0.003F) return false;
         if (unavailable) return false;
         try {
@@ -34,6 +38,7 @@ final class CelestialPost {
                 effect = new PostChain(client.getTextureManager(), client.getResourceManager(), target,
                         MinecraftMod.id("shaders/post/celestial_exposure.json"));
                 width = 0;
+                ImpactPulse.diagnostics("framebuffer shader initialized");
             }
             if (width != target.width || height != target.height) {
                 width = target.width;
@@ -47,7 +52,14 @@ final class CelestialPost {
             effect.setUniform("Inversion", inversion);
             effect.setUniform("FocusX", x);
             effect.setUniform("FocusY", y);
+            RenderSystem.disableBlend();
+            RenderSystem.disableDepthTest();
+            RenderSystem.resetTextureMatrix();
             effect.process(delta);
+            if (inversion > .003F && !wasInverting) {
+                ImpactPulse.diagnostics("framebuffer inversion rendered");
+                wasInverting = true;
+            }
             return true;
         } catch (IOException | RuntimeException failure) {
             unavailable = true;
@@ -57,6 +69,7 @@ final class CelestialPost {
             return false;
         } finally {
             target.bindWrite(true);
+            RenderSystem.enableDepthTest();
         }
     }
 }

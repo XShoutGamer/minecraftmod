@@ -23,5 +23,6 @@
   "subtitles.minecraftmod.divine_arc": "Celestial lightning rolls across the sky",
   "subtitles.minecraftmod.crimson_arc": "Crimson lightning tears outward",
   "subtitles.minecraftmod.golden_flow": "Golden current sweeps over the ground",
-  "subtitles.minecraftmod.residual_arc": "Celestial residue crackles"
+  "subtitles.minecraftmod.residual_arc": "Celestial residue crackles",
+  "key.minecraftmod.debugInversion": "Preview impact inversion (development)"
 }

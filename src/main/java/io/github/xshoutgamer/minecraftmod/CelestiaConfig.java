@@ -16,6 +16,10 @@ public final class CelestiaConfig {
     public static final ModConfigSpec.IntValue LIGHTNING_DETAIL, PARTICLE_VARIETY, INVERT_TICKS, RESIDUAL_TICKS;
     public static final ModConfigSpec.IntValue VISUAL_RANGE, BLAST_RADIUS, SEAL_DIAMETER, BEAM_HEIGHT;
 
+    public static final ModConfigSpec.BooleanValue ALTERNATE_BOLTS, SECONDARY_MOTION;
+    public static final ModConfigSpec.DoubleValue BOLT_INTERVAL, BOLT_MOVEMENT, BOLT_GROWTH, BOLT_GLOW;
+    public static final ModConfigSpec.IntValue BOLT_STATES, BOLT_RESIDUAL, INVERT_RECOVERY;
+
     static {
         var server = new ModConfigSpec.Builder();
         LENGTH = server.defineInRange("nailLength", 60, 20, 80);
@@ -51,6 +55,15 @@ public final class CelestiaConfig {
         BLAST_RADIUS = client.defineInRange("visualBlastRadius", 320, 60, 350);
         SEAL_DIAMETER = client.defineInRange("skySealDiameter", 180, 40, 200);
         BEAM_HEIGHT = client.defineInRange("beamHeight", 360, 80, 400);
+        ALTERNATE_BOLTS = client.define("alternateCrimsonGeometry", true);
+        BOLT_INTERVAL = client.defineInRange("lightningGeometryIntervalSeconds", .5D, .15D, 2D);
+        BOLT_STATES = client.defineInRange("lightningGeometryStates", 2, 2, 4);
+        SECONDARY_MOTION = client.define("animateSecondaryBranches", true);
+        BOLT_MOVEMENT = client.defineInRange("lightningMovementIntensity", 1D, 0D, 1.5D);
+        BOLT_GROWTH = client.defineInRange("lightningGrowthSpeed", 1D, .4D, 2D);
+        BOLT_GLOW = client.defineInRange("lightningGlowIntensity", 1D, 0D, 1.5D);
+        BOLT_RESIDUAL = client.defineInRange("residualLightningTicks", 86, 12, 240);
+        INVERT_RECOVERY = client.defineInRange("colorInversionRecoveryTicks", 3, 1, 8);
         LIGHTNING = client.defineInRange("lightningDensity", 1D, 0D, 1.5D);
         LIGHTNING_DETAIL = client.defineInRange("lightningComplexity", 3, 1, 3);
         RIBBONS = client.defineInRange("energyRibbonDensity", 1D, 0D, 1.5D);

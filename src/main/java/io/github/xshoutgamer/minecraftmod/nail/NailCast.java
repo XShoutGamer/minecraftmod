@@ -18,7 +18,9 @@ public record NailCast() implements CustomPacketPayload {
     private static final String COOLDOWN_KEY = "minecraftmod.nailCooldown";
 
     public static void register(RegisterPayloadHandlersEvent event) {
-        event.registrar("3").playToServer(TYPE, StreamCodec.unit(INSTANCE), (packet, context) -> {
+        var registrar = event.registrar("4");
+        NailImpact.register(registrar);
+        registrar.playToServer(TYPE, StreamCodec.unit(INSTANCE), (packet, context) -> {
             if (context.player() instanceof ServerPlayer player) cast(player);
         });
     }

@@ -45,6 +45,7 @@ void main() {
     color *= 1.0 + Exposure * 0.48 + min(Haze, 0.0) * 0.68;
     color += bloom * vec3(0.68, 0.89, 1.0) + shafts * vec3(0.50, 0.68, 0.86);
     color = mix(color, vec3(0.83, 0.96, 1.0), clamp(Exposure * (0.7 + exp(-radius * 3.5) * 0.27), 0.0, 0.88));
-    color = mix(color, vec3(1.0) - clamp(color, 0.0, 1.0), Inversion);
+    vec3 original = scene(texCoord);
+    color = mix(color, vec3(1.0) - original, Inversion);
     fragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
 }

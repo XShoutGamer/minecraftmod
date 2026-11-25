@@ -11,6 +11,7 @@ import net.minecraft.world.phys.AABB;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.loading.FMLLoader;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
@@ -26,6 +27,8 @@ import org.lwjgl.glfw.GLFW;
 public final class ClientEvents {
     private static final KeyMapping CAST = new KeyMapping("key.minecraftmod.cast", InputConstants.Type.KEYSYM,
             GLFW.GLFW_KEY_B, "key.categories.minecraftmod");
+    private static final KeyMapping INVERSION_PREVIEW = new KeyMapping("key.minecraftmod.debugInversion", InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_F8, "key.categories.minecraftmod");
     private static boolean held;
 
     private ClientEvents() {}
@@ -40,11 +43,17 @@ public final class ClientEvents {
 
         @SubscribeEvent
         public static void reload(RegisterClientReloadListenersEvent event) {
-            event.registerReloadListener((ResourceManagerReloadListener) resources -> CelestialPost.invalidate());
+            event.registerReloadListener((ResourceManagerReloadListener) resources -> {
+                CelestialPost.invalidate();
+                Minecraft.getInstance().execute(ImpactPulse::clear);
+            });
         }
 
         @SubscribeEvent
-        public static void keys(RegisterKeyMappingsEvent event) { event.register(CAST); }
+        public static void keys(RegisterKeyMappingsEvent event) {
+            event.register(CAST);
+            if (!FMLLoader.isProduction()) event.register(INVERSION_PREVIEW);
+        }
 
         @SubscribeEvent
         public static void renderers(EntityRenderersEvent.RegisterRenderers event) {
@@ -57,6 +66,8 @@ public final class ClientEvents {
         @SubscribeEvent
         public static void input(ClientTickEvent.Post event) {
             Minecraft mc = Minecraft.getInstance();
+            ImpactPulse.checkWorld(mc.level);
+            if (!FMLLoader.isProduction() && INVERSION_PREVIEW.consumeClick() && mc.screen == null) ImpactPulse.preview();
             boolean down = CAST.isDown();
             boolean pressed = CAST.consumeClick();
             if ((down || pressed) && !held && mc.screen == null && mc.player != null && mc.getConnection() != null

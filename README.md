@@ -27,6 +27,14 @@ The storm uses seeded divine, golden, crimson and residual lightning with differ
 
 World lighting comes from the existing luminous blocks and temporary impact light. Lightning halos, fog, and the fullscreen pass approximate surrounding illumination. Terrain ribbons follow the client heightmap, which can hide portions behind overhangs or in unloaded chunks.
 
+## Animated lightning and impact inversion
+
+Crimson bolts cycle through cached seeded shapes. Their endpoints stay fixed while bends and attached branches move. The black center and red glow share the same animated vertices. The sky lightning follows independent cycles of growth, discharge, decay, and reformation. Charge level increases the number of active arcs.
+
+- `alternateCrimsonGeometry` controls whether the main impact bolts switch paths. `lightningGeometryIntervalSeconds` defaults to `0.5` and `lightningGeometryStates` defaults to `2`. Movement, secondary-branch animation, growth speed, residual duration, and glow each have their own client settings.
+- `impactColorInversion` remains off by default. When enabled, a server impact packet queues the negative and its duration starts on the first rendered frame. `colorInversionRecoveryTicks` controls the return to normal scenery. The shader samples the scene before applying exposure and leaves the HUD intact. `reducedFlash = true` disables the negative.
+- In a development client, **F8** previews a milder negative without casting. Launch the client with the JVM property `minecraftmod.cinematicDebug=true` to log packet receipt, shader initialization, drawing, and cleanup.
+
 ## Build and run
 
 With JDK 21, run `./gradlew build` (Windows: `gradlew.bat build`). Put the JAR from `build/libs/` into the NeoForge profile's `mods` folder. Use `./gradlew runClient` or `./gradlew runServer` for development. A dedicated server requires acceptance of the Minecraft EULA.

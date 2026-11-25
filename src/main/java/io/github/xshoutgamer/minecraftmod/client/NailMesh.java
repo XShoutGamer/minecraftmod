@@ -63,20 +63,21 @@ final class NailMesh {
         quad(rightCore, b, c, farRight, color, alpha, 0, -1);
     }
 
-    void joinedQuad(Point a, Point b, Point c, Point d, int color, float near, float far) {
+    void joinedQuad(Point a, Point b, Point c, Point d, int color, float near, float far, float v0, float v1) {
         if (Math.max(near, far) * opacity < .003F) return;
         Point a1 = between(a, b, .35F), b1 = between(a, b, .65F);
         Point d1 = between(d, c, .35F), c1 = between(d, c, .65F);
-        joinedBand(a, a1, d1, d, color, 0, near, far, 0);
-        joinedBand(a1, b1, c1, d1, color, near, near, far, far);
-        joinedBand(b1, b, c, c1, color, near, 0, 0, far);
+        joinedBand(a, a1, d1, d, color, 0, near, far, 0, v0, v1, 0, .35F);
+        joinedBand(a1, b1, c1, d1, color, near, near, far, far, v0, v1, .35F, .65F);
+        joinedBand(b1, b, c, c1, color, near, 0, 0, far, v0, v1, .65F, 1);
     }
 
-    private void joinedBand(Point a, Point b, Point c, Point d, int color, float aa, float ab, float ac, float ad) {
-        vertex(a, color, aa, 1, 0, 0);
-        vertex(b, color, ab, 1, 1, 0);
-        vertex(c, color, ac, 1, 1, 1);
-        vertex(d, color, ad, 1, 0, 1);
+    private void joinedBand(Point a, Point b, Point c, Point d, int color, float aa, float ab, float ac, float ad,
+                            float v0, float v1, float u0, float u1) {
+        vertex(a, color, aa, 1, u0, v0);
+        vertex(b, color, ab, 1, u1, v0);
+        vertex(c, color, ac, 1, u1, v1);
+        vertex(d, color, ad, 1, u0, v1);
     }
 
     private static Point between(Point a, Point b, float t) {

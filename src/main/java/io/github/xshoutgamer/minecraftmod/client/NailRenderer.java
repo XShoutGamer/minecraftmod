@@ -100,10 +100,14 @@ public final class NailRenderer extends EntityRenderer<CelestialNail> {
                 WeatherMeshes.star(sky, nail.modelHeight() + 2, 74 + 95 * charge, time, 0.18F + 0.53F * charge,
                         quality, true);
                 summoning(sky, phase, age, time, pulse, reduced);
-                if (storm != null && phase != CelestialNail.Phase.SUMMONING) {
-                    float skyAge = (phase == CelestialNail.Phase.CHARGING ? 16 : 0) + age;
+                if (storm != null) {
+                    float skyAge = switch (phase) {
+                        case SUMMONING -> age;
+                        case LEVITATING -> CelestialNail.MATERIALIZE_TICKS + age;
+                        default -> CelestialNail.MATERIALIZE_TICKS + 16 + age;
+                    };
                     storm.frame(true, skyAge, time, nail.modelHeight() + 5, CelestiaConfig.SEAL_DIAMETER.get() * 1.13F,
-                            quality, camera).glow(sky);
+                            quality, charge, camera).glow(sky);
                 }
                 if (quality >= 2) EnergyChoreography.sky(sky, camera, nail.modelHeight() + 4, time, intensity, charge, quality);
             }
@@ -112,7 +116,7 @@ public final class NailRenderer extends EntityRenderer<CelestialNail> {
             var glow = new NailMesh(poses, buffers.getBuffer(GLOW), true, visibility * intensity * recession);
             WeatherMeshes.impact(glow, vertical, surface, time, nail.radius(), quality);
             var discharge = storm == null ? null : storm.frame(false, surface, time, vertical + 3,
-                    CelestiaConfig.BLAST_RADIUS.get() * .9F, quality, camera);
+                    CelestiaConfig.BLAST_RADIUS.get() * .9F, quality, 0, camera);
             if (discharge != null) discharge.glow(glow);
             if (quality >= 2) EnergyChoreography.land(nail, glow, camera, vertical, surface, time, quality);
             groundFront(nail, glow, vertical, surface, time, quality);

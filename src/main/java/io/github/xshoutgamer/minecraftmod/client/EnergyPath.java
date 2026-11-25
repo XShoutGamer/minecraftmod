@@ -16,6 +16,7 @@ final class EnergyPath {
         Point left = null, right = null;
         float previous = 0;
         double meters = 0;
+        double previousMeters = 0;
         for (int i = 0; i < path.length; i++) {
             float progress = i / (float) (path.length - 1);
             if (i > 0) meters += path[i].distanceTo(path[i - 1]);
@@ -31,11 +32,12 @@ final class EnergyPath {
             float traveling = .78F + .14F * Mth.sin((float) meters * .14F - clock) + .08F * Mth.sin((float) meters * .39F + clock * .55F);
             float gain = intensity * (closed ? Mth.lerp((float) Math.pow(Math.abs(2 * progress - 1), 8),
                     traveling, .8F) : traveling) * Mth.clamp((growth - progress) * (path.length - 1) + .4F, 0, 1);
-            if (left != null) mesh.joinedQuad(left, right, b, a, tint, previous, gain);
+            if (left != null) mesh.joinedQuad(left, right, b, a, tint, previous, gain, (float) previousMeters * .0625F, (float) meters * .0625F);
             if (progress > growth) break;
             left = a;
             right = b;
             previous = gain;
+            previousMeters = meters;
         }
     }
 

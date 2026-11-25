@@ -170,6 +170,7 @@ public final class CelestialNail extends Entity {
             }
             case CHARGING -> {
                 if (age == 8 || age == chargeTicks - 40) cinematicSound(MinecraftMod.DIVINE_ARC.get(), 1.22F, false);
+                if (age == 31 || age == chargeTicks - 24) cinematicSound(MinecraftMod.GOLDEN_FLOW.get(), .46F, false);
                 if (age < chargeTicks - 6) moveToY(skyY + Math.sin(age * 0.11) * 0.45);
                 if (age >= chargeTicks) {
                     releaseY = getY();
@@ -186,7 +187,7 @@ public final class CelestialNail extends Entity {
                 double progress = Math.min(1, age / 16.0);
                 moveToY(Mth.lerp(1 - (1 - progress) * (1 - progress), target().getY() + 1, baseY()));
                 if (age == 5) cinematicSound(MinecraftMod.GOLDEN_FLOW.get(), 1.1F, true);
-                if (age == 29) cinematicSound(MinecraftMod.CRIMSON_ARC.get(), .64F, true);
+                if (age == 12 || age == 29) cinematicSound(MinecraftMod.CRIMSON_ARC.get(), age == 12 ? .46F : .64F, true);
                 if (age == 8 || age == 21 || age == 39) sound(MinecraftMod.SHOCKWAVE.get(), 2F - age / 35F, true);
                 if (age == 4 && !visualOnly && CelestiaConfig.LIGHT.get()) light = ImpactTerrain.placeLight(level, owner(level), target(), craterDepth);
                 if (age == 12) sound(MinecraftMod.FRACTURE.get(), 2.9F, true);
@@ -223,6 +224,7 @@ public final class CelestialNail extends Entity {
 
     private void impact(ServerLevel level) {
         advance(Phase.IMPACTING);
+        NailImpact.send(level, this);
         sound(MinecraftMod.IMPACT.get(), 4.8F, true);
         sound(MinecraftMod.RELEASE.get(), 2.2F, true);
         cinematicSound(MinecraftMod.CRIMSON_ARC.get(), 1.3F, true);
