@@ -8,6 +8,8 @@ With terrain destruction enabled, the falling Nail cuts a shaft about 12 blocks 
 
 After roughly 53 seconds from impact, counting the impact and conversion animations, the Nail becomes collidable world blocks. The permanent block profile shares its cross sections with the animated mesh. The core and fracture residue emit block light and have animated textures. Textures and audio are original.
 
+The impact shockwave travels 100 blocks in one second at normal server speed. It damages and pushes living entities outward once per impact. Both effects fall linearly from full strength at the impact center to zero at 100 blocks, using three-dimensional distance. The caster is immune, and the shockwave respects PvP settings and friendly-fire rules. Configure the peak damage and push independently with `impactDamage` and `impactKnockback` in the server config. Zero disables the corresponding effect.
+
 Use a disposable world for the first cast. Install the same mod version on the server and participating clients.
 
 ## Configuration

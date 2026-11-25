@@ -7,6 +7,7 @@ import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -18,12 +19,9 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
 
 public final class CelestialNail extends Entity {
     public enum Phase { SUMMONING, LEVITATING, CHARGING, DESCENDING, IMPACTING, EMBEDDED, SOLIDIFYING }
@@ -58,6 +56,7 @@ public final class CelestialNail extends Entity {
     private boolean terrain, visualOnly;
     private boolean waitingToSolidify;
     private BlockPos light;
+    private ImpactShockwave shockwave;
     private List<FracturePattern.Column> crater;
     private List<FracturePattern.Segment> cracks;
     private List<FracturePattern.FractureCut> cuts;
@@ -190,6 +189,10 @@ public final class CelestialNail extends Entity {
                 if (age >= descentTicks) impact(level);
             }
             case IMPACTING -> {
+                if (shockwave != null) {
+                    shockwave.spread(level, this, ownerId, age);
+                    if (age >= ImpactShockwave.DURATION) shockwave = null;
+                }
                 double progress = Math.min(1, age / 16.0);
                 moveToY(Mth.lerp(1 - (1 - progress) * (1 - progress), target().getY() + 1, baseY()));
                 if (age == 5) cinematicSound(MinecraftMod.GOLDEN_FLOW.get(), 1.1F, true);
@@ -235,22 +238,7 @@ public final class CelestialNail extends Entity {
         sound(MinecraftMod.RELEASE.get(), 2.2F, true);
         cinematicSound(MinecraftMod.CRIMSON_ARC.get(), 1.3F, true);
         workTerrain(level);
-        if (visualOnly) return;
-        ServerPlayer owner = owner(level);
-        double damage = CelestiaConfig.DAMAGE.get();
-        if (damage <= 0) return;
-        Vec3 center = Vec3.atCenterOf(target());
-        double range = radius() * 1.15;
-        for (LivingEntity victim : level.getEntitiesOfClass(LivingEntity.class, new AABB(target()).inflate(range),
-                victim -> victim.isAlive() && !victim.isSpectator() && victim != owner)) {
-            if (owner != null && victim instanceof ServerPlayer player && !owner.canHarmPlayer(player)) continue;
-            double strength = 1 - victim.position().distanceTo(center) / range;
-            if (strength <= 0) continue;
-            if (victim.hurt(owner == null ? damageSources().magic() : damageSources().indirectMagic(this, owner),
-                    (float) (damage * strength))) {
-                victim.knockback(0.9 * strength, center.x - victim.getX(), center.z - victim.getZ());
-            }
-        }
+        if (!visualOnly) shockwave = new ImpactShockwave();
     }
 
     private void workTerrain(ServerLevel level) {
@@ -355,6 +343,7 @@ public final class CelestialNail extends Entity {
         tag.putBoolean("WaitingToSolidify", waitingToSolidify);
         tag.putInt("CraterCursor", craterCursor);
         tag.putInt("CrackCursor", crackCursor);
+        if (shockwave != null) tag.put("ShockwaveHits", shockwave.save());
         if (light != null) tag.putLong("Light", light.asLong());
     }
 
@@ -382,6 +371,10 @@ public final class CelestialNail extends Entity {
         waitingToSolidify = tag.getBoolean("WaitingToSolidify");
         craterCursor = tag.getInt("CraterCursor");
         crackCursor = tag.getInt("CrackCursor");
+        if (phase() == Phase.IMPACTING && phaseTicks < ImpactShockwave.DURATION && !visualOnly
+                && tag.contains("ShockwaveHits", Tag.TAG_LIST)) {
+            shockwave = ImpactShockwave.load(tag.getList("ShockwaveHits", Tag.TAG_INT_ARRAY));
+        }
         if (tag.contains("Light")) light = BlockPos.of(tag.getLong("Light"));
         resetVisualY();
     }

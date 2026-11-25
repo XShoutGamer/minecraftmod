@@ -7,7 +7,7 @@ public final class CelestiaConfig {
     public static final ModConfigSpec.EnumValue<Quality> QUALITY;
     public static final ModConfigSpec SERVER_SPEC;
     public static final ModConfigSpec CLIENT_SPEC;
-    public static final ModConfigSpec.DoubleValue DAMAGE, VOLUME;
+    public static final ModConfigSpec.DoubleValue DAMAGE, KNOCKBACK, VOLUME;
     public static final int DEFAULT_CRATER_RADIUS = 22;
     private static final int LEGACY_CRATER_RADIUS = 15;
     private static final ModConfigSpec.IntValue RADIUS, LEGACY_RADIUS;
@@ -38,7 +38,10 @@ public final class CelestiaConfig {
         DEPTH = server.defineInRange("excavationDepth", 50, 12, 64);
         CRACK_LENGTH = server.defineInRange("fractureRange", 145, 20, 155);
         COOLDOWN = server.defineInRange("cooldownSeconds", 20, 1, 600);
-        DAMAGE = server.defineInRange("impactDamage", 28D, 0D, 100D);
+        DAMAGE = server.comment("Maximum shockwave damage at the impact center. Falls to zero at 100 blocks.")
+                .defineInRange("impactDamage", 28D, 0D, 100D);
+        KNOCKBACK = server.comment("Maximum shockwave knockback at the impact center. Set to zero to disable the push.")
+                .defineInRange("impactKnockback", 2D, 0D, 5D);
         TERRAIN = server.define("terrainDestruction", true);
         LIGHT = server.comment("Place a temporary vanilla light block near the impact if permitted.").define("environmentLighting", true);
         PERSIST = server.comment("Seconds embedded before solidification. -1 keeps the animated entity.").defineInRange("solidificationSeconds", 48, -1, 3600);

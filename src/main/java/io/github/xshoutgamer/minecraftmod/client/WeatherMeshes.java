@@ -2,6 +2,7 @@ package io.github.xshoutgamer.minecraftmod.client;
 
 import net.minecraft.util.Mth;
 import io.github.xshoutgamer.minecraftmod.CelestiaConfig;
+import io.github.xshoutgamer.minecraftmod.nail.ImpactShockwave;
 import static io.github.xshoutgamer.minecraftmod.client.NailMesh.*;
 
 final class WeatherMeshes {
@@ -56,6 +57,12 @@ final class WeatherMeshes {
     static void impact(NailMesh mesh, float y, float age, float time, int crater, int quality) {
         float radius = Math.max(crater * 3F, CelestiaConfig.BLAST_RADIUS.get());
         int sides = quality == 0 ? 44 : quality == 1 ? 64 : quality <= 3 ? 112 : 152;
+        if (age > 0 && age < 24) {
+            float front = ImpactShockwave.reach(age);
+            float fade = 1 - Mth.clamp((age - 14) / 10, 0, 1);
+            mesh.ring(y + 0.3F, front, 1.25F, 0, sides, 1, CYAN, fade * 0.48F);
+            mesh.ring(y + 0.4F, front, 0.24F, 0, sides, 1, WHITE, fade * 0.65F);
+        }
         if (age < 48) {
             float much = Mth.clamp((age + 2.1F) / 37, 0, 1);
             float spread = radius * (1 - (1 - much) * (1 - much));
