@@ -117,7 +117,11 @@ public final class NailRenderer extends EntityRenderer<CelestialNail> {
             WeatherMeshes.impact(glow, vertical, surface, time, nail.radius(), quality);
             var discharge = storm == null ? null : storm.frame(false, surface, time, vertical + 3,
                     CelestiaConfig.BLAST_RADIUS.get() * .9F, quality, 0, camera);
-            if (discharge != null) discharge.glow(glow);
+            boolean deferred = discharge != null && CrimsonLayer.defer(discharge, poses, intensity * recession);
+            if (discharge != null) {
+                if (deferred) discharge.otherGlow(glow);
+                else discharge.glow(glow);
+            }
             if (quality >= 2) EnergyChoreography.land(nail, glow, camera, vertical, surface, time, quality);
             groundFront(nail, glow, vertical, surface, time, quality);
             aftermath(glow, vertical, floor(nail, 0, 0, vertical), surface, time, nail.radius(), reduced);
@@ -126,7 +130,7 @@ public final class NailRenderer extends EntityRenderer<CelestialNail> {
                 if (!reduced && surface < 36) arcs(glow, vertical, surface, time);
                 particles(poses, buffers, vertical, surface, time, visibility * recession, quality);
             }
-            if (discharge != null && surface < 43) {
+            if (!deferred && discharge != null && surface < 43) {
                 discharge.darkCenters(new NailMesh(poses, buffers.getBuffer(DARK), false, intensity * recession));
             }
         }

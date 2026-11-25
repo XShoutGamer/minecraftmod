@@ -194,8 +194,17 @@ final class CelestialStorm {
     }
 
     record Frame(List<Visible> arcs, Vec3 eye, float time) {
-        void glow(NailMesh mesh) {
+        boolean hasCrimson() { return arcs.stream().anyMatch(arc -> arc.type == Type.CRIMSON); }
+
+        void glow(NailMesh mesh) { glow(mesh, true, true); }
+
+        void otherGlow(NailMesh mesh) { glow(mesh, false, true); }
+
+        void crimsonGlow(NailMesh mesh) { glow(mesh, true, false); }
+
+        private void glow(NailMesh mesh, boolean crimson, boolean other) {
             for (var arc : arcs) {
+                if (arc.type == Type.CRIMSON ? !crimson : !other) continue;
                 var type = arc.type;
                 EnergyPath.render(mesh, arc.points, eye, arc.width * 3.7F, arc.gain * .14F, type.glow, time * .3F, arc.growth, true);
                 EnergyPath.render(mesh, arc.points, eye, arc.width * 1.6F, arc.gain * .8F, type.glow, time * .51F, arc.growth, true);

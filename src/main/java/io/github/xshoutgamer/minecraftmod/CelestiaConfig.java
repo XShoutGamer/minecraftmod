@@ -69,7 +69,7 @@ public final class CelestiaConfig {
         RIBBONS = client.defineInRange("energyRibbonDensity", 1D, 0D, 1.5D);
         PARTICLE_VARIETY = client.defineInRange("particleVariety", 4, 1, 4);
         RESIDUAL_TICKS = client.defineInRange("residualEffectTicks", 480, 40, 1100);
-        INVERT = client.comment("Opt-in scene negative. Has no effect with reducedFlash enabled.").define("impactColorInversion", false);
+        INVERT = client.comment("Brief impact negative. Has no effect with reducedFlash enabled.").define("impactColorInversion", true);
         INVERT_INTENSITY = client.defineInRange("colorInversionIntensity", 0.84D, 0D, 1D);
         INVERT_TICKS = client.defineInRange("colorInversionTicks", 5, 2, 9);
         REDUCED_FLASH = client.define("reducedFlash", false);

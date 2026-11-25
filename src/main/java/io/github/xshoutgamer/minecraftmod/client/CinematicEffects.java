@@ -27,6 +27,14 @@ public final class CinematicEffects {
 
     @SubscribeEvent
     public static void exposure(RenderGuiEvent.Pre event) {
+        try {
+            renderSceneEffects(event);
+        } finally {
+            CrimsonLayer.draw();
+        }
+    }
+
+    private static void renderSceneEffects(RenderGuiEvent.Pre event) {
         var mc = Minecraft.getInstance();
         var view = mc.gameRenderer.getMainCamera();
         var effect = sample(view.getPosition(), event.getPartialTick().getGameTimeDeltaPartialTick(false));

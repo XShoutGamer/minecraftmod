@@ -58,6 +58,13 @@ public final class ImpactPulse {
         diagnostics("inversion queued for " + ticks + " ticks at " + strength);
     }
 
+    static boolean pending() {
+        if (active == null || CelestiaConfig.REDUCED_FLASH.get()) return false;
+        long now = System.nanoTime();
+        return active.started == 0 ? now - active.received < MAX_PENDING_NANOS
+                : now - active.started < active.ticks * NANOS_PER_TICK;
+    }
+
     static Sample sample() {
         checkWorld(Minecraft.getInstance().level);
         if (active == null) return null;
