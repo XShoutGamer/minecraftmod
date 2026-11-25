@@ -11,14 +11,14 @@ public final class CelestiaConfig {
     public static final ModConfigSpec.IntValue LENGTH, WIDTH, ALTITUDE, CHARGE, DESCENT, RADIUS, DEPTH, CRACK_LENGTH, COOLDOWN, PERSIST, TERRAIN_BUDGET;
     public static final ModConfigSpec.BooleanValue TERRAIN, LIGHT, VISUAL_ONLY;
     public static final ModConfigSpec.DoubleValue PARTICLES, GLOW, SHAKE, FLASH, MOTION, EXPOSURE, DISTORTION, ATMOSPHERE;
-    public static final ModConfigSpec.BooleanValue REDUCED, INVERT, REDUCED_FLASH, REDUCED_MOTION;
+    public static final ModConfigSpec.BooleanValue REDUCED, MONOCHROME, REDUCED_FLASH, REDUCED_MOTION;
     public static final ModConfigSpec.DoubleValue LIGHTNING, RIBBONS, MONOCHROME_STRENGTH, CINEMATIC_SOUNDS;
-    public static final ModConfigSpec.IntValue LIGHTNING_DETAIL, PARTICLE_VARIETY, INVERT_TICKS, RESIDUAL_TICKS;
+    public static final ModConfigSpec.IntValue LIGHTNING_DETAIL, PARTICLE_VARIETY, MONOCHROME_TICKS, RESIDUAL_TICKS;
     public static final ModConfigSpec.IntValue VISUAL_RANGE, BLAST_RADIUS, SEAL_DIAMETER, BEAM_HEIGHT;
 
     public static final ModConfigSpec.BooleanValue ALTERNATE_BOLTS, SECONDARY_MOTION;
     public static final ModConfigSpec.DoubleValue BOLT_INTERVAL, BOLT_MOVEMENT, BOLT_GROWTH, BOLT_GLOW;
-    public static final ModConfigSpec.IntValue BOLT_STATES, BOLT_RESIDUAL, INVERT_RECOVERY;
+    public static final ModConfigSpec.IntValue BOLT_STATES, BOLT_RESIDUAL, MONOCHROME_RECOVERY;
 
     static {
         var server = new ModConfigSpec.Builder();
@@ -63,15 +63,15 @@ public final class CelestiaConfig {
         BOLT_GROWTH = client.defineInRange("lightningGrowthSpeed", 1D, .4D, 2D);
         BOLT_GLOW = client.defineInRange("lightningGlowIntensity", 1D, 0D, 1.5D);
         BOLT_RESIDUAL = client.defineInRange("residualLightningTicks", 86, 12, 240);
-        INVERT_RECOVERY = client.defineInRange("colorInversionRecoveryTicks", 3, 1, 8);
+        MONOCHROME_RECOVERY = client.defineInRange("impactMonochromeRecoveryTicks", 5, 1, 12);
         LIGHTNING = client.defineInRange("lightningDensity", 1D, 0D, 1.5D);
         LIGHTNING_DETAIL = client.defineInRange("lightningComplexity", 3, 1, 3);
         RIBBONS = client.defineInRange("energyRibbonDensity", 1D, 0D, 1.5D);
         PARTICLE_VARIETY = client.defineInRange("particleVariety", 4, 1, 4);
         RESIDUAL_TICKS = client.defineInRange("residualEffectTicks", 480, 40, 1100);
-        INVERT = client.comment("Brief impact grayscale. Legacy key retained for existing profiles.").define("impactColorInversion", true);
+        MONOCHROME = client.comment("Turn the world grayscale at impact while leaving crimson lightning in color.").define("impactMonochrome", true);
         MONOCHROME_STRENGTH = client.defineInRange("impactMonochromeStrength", 1D, 0D, 1D);
-        INVERT_TICKS = client.defineInRange("colorInversionTicks", 5, 2, 9);
+        MONOCHROME_TICKS = client.defineInRange("impactMonochromeTicks", 12, 3, 20);
         REDUCED_FLASH = client.define("reducedFlash", false);
         REDUCED_MOTION = client.define("reducedMotion", false);
         REDUCED = client.define("reducedEffects", false);

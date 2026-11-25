@@ -32,8 +32,12 @@ public final class ImpactPulse {
         if (!SEEN.add(packet.nail())) return;
         if (SEEN.size() > 64) SEEN.removeFirst();
         diagnostics("received impact " + packet.nail());
-        if (!CelestiaConfig.INVERT.get() || CelestiaConfig.REDUCED_FLASH.get()) {
-            diagnostics("monochrome skipped by client accessibility settings");
+        if (!CelestiaConfig.MONOCHROME.get()) {
+            diagnostics("monochrome skipped: impactMonochrome is off");
+            return;
+        }
+        if (CelestiaConfig.REDUCED_FLASH.get()) {
+            diagnostics("monochrome skipped: reducedFlash is on");
             return;
         }
         if (active != null) return;
@@ -43,7 +47,7 @@ public final class ImpactPulse {
         float falloff = (float) Mth.clamp(1 - Math.max(0, distance - 120) / Math.max(1, fadeDistance - 120), 0, 1);
         float strength = falloff * CelestiaConfig.MONOCHROME_STRENGTH.get().floatValue();
         if (strength < .01F) return;
-        start(source, packet.entityId(), strength, CelestiaConfig.INVERT_TICKS.get(), CelestiaConfig.INVERT_RECOVERY.get());
+        start(source, packet.entityId(), strength, CelestiaConfig.MONOCHROME_TICKS.get(), CelestiaConfig.MONOCHROME_RECOVERY.get());
     }
 
     static void preview() {
