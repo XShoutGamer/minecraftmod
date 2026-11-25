@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "minecraftmod:block/engraved_celestial_stone"
+    }
+  }
+}

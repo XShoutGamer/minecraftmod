@@ -1,15 +1,55 @@
 package io.github.xshoutgamer.minecraftmod;
 
-import com.mojang.logging.LogUtils;
+import io.github.xshoutgamer.minecraftmod.nail.CelestialNail;
+import io.github.xshoutgamer.minecraftmod.nail.NailCast;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.MobCategory;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
-import org.slf4j.Logger;
+import net.neoforged.fml.config.ModConfig;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.registries.DeferredRegister;
 
 @Mod(MinecraftMod.MOD_ID)
 public final class MinecraftMod {
     public static final String MOD_ID = "minecraftmod";
-    private static final Logger LOGGER = LogUtils.getLogger();
+    private static final DeferredRegister<EntityType<?>> ENTITIES = DeferredRegister.create(Registries.ENTITY_TYPE, MOD_ID);
+    private static final DeferredRegister<SoundEvent> SOUNDS = DeferredRegister.create(Registries.SOUND_EVENT, MOD_ID);
 
-    public MinecraftMod() {
-        LOGGER.info("Minecraft Mod initialized");
+    public static final DeferredHolder<EntityType<?>, EntityType<CelestialNail>> NAIL = ENTITIES.register("celestial_nail",
+            () -> EntityType.Builder.<CelestialNail>of(CelestialNail::new, MobCategory.MISC)
+                    .sized(2.5F, 40F).clientTrackingRange(32).updateInterval(1).fireImmune().build(id("celestial_nail").toString()));
+
+    public static final DeferredHolder<SoundEvent, SoundEvent> SUMMON = sound("summon");
+    public static final DeferredHolder<SoundEvent, SoundEvent> GATHER = sound("gather");
+    public static final DeferredHolder<SoundEvent, SoundEvent> CHARGE = sound("charge");
+    public static final DeferredHolder<SoundEvent, SoundEvent> DESCENT = sound("descent");
+    public static final DeferredHolder<SoundEvent, SoundEvent> IMPACT = sound("impact");
+    public static final DeferredHolder<SoundEvent, SoundEvent> SHOCKWAVE = sound("shockwave");
+    public static final DeferredHolder<SoundEvent, SoundEvent> FRACTURE = sound("fracture");
+    public static final DeferredHolder<SoundEvent, SoundEvent> DEBRIS = sound("debris");
+    public static final DeferredHolder<SoundEvent, SoundEvent> RUMBLE = sound("rumble");
+    public static final DeferredHolder<SoundEvent, SoundEvent> AMBIENT = sound("ambient");
+    public static final DeferredHolder<SoundEvent, SoundEvent> DISSOLVE = sound("dissolve");
+
+    public MinecraftMod(IEventBus bus, ModContainer container) {
+        ENTITIES.register(bus);
+        SOUNDS.register(bus);
+        CelestialBlocks.register(bus);
+        bus.addListener(NailCast::register);
+        container.registerConfig(ModConfig.Type.SERVER, CelestiaConfig.SERVER_SPEC);
+        container.registerConfig(ModConfig.Type.CLIENT, CelestiaConfig.CLIENT_SPEC);
+    }
+
+    public static ResourceLocation id(String path) {
+        return ResourceLocation.fromNamespaceAndPath(MOD_ID, path);
+    }
+
+    private static DeferredHolder<SoundEvent, SoundEvent> sound(String name) {
+        return SOUNDS.register(name, () -> SoundEvent.createFixedRangeEvent(id(name), 384F));
     }
 }

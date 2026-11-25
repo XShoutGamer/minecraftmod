@@ -1,0 +1,16 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:barrier",
+    "minecraft:bedrock",
+    "minecraft:light",
+    "minecraft:reinforced_deepslate",
+    "minecraft:structure_void",
+    "minecraftmod:celestial_stone",
+    "minecraftmod:engraved_celestial_stone",
+    "minecraftmod:celestial_crystal",
+    "minecraftmod:luminous_core",
+    "minecraftmod:celestial_fracture",
+    "minecraftmod:celestial_frame"
+  ]
+}

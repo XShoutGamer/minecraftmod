@@ -5,8 +5,8 @@ license = "All Rights Reserved"
 [[mods]]
 modId = "minecraftmod"
 version = "${mod_version}"
-displayName = "Minecraft Mod"
-description = "A NeoForge mod for Minecraft Java Edition 1.21.1."
+displayName = "Celestia: Divine Authority"
+description = "Summon a celestial monument and fracture the landscape with its descent."
 
 [[dependencies.minecraftmod]]
 modId = "neoforge"

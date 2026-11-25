@@ -1,0 +1,22 @@
+{
+  "key.categories.minecraftmod": "Celestia: Divine Authority",
+  "key.minecraftmod.cast": "Summon Celestial Nail",
+  "entity.minecraftmod.celestial_nail": "Celestial Nail",
+  "subtitles.minecraftmod.summon": "A celestial seal forms",
+  "subtitles.minecraftmod.gather": "Celestial energy gathers",
+  "subtitles.minecraftmod.charge": "The Celestial Nail charges",
+  "subtitles.minecraftmod.descent": "The Celestial Nail falls",
+  "subtitles.minecraftmod.impact": "The Celestial Nail strikes",
+  "subtitles.minecraftmod.shockwave": "A celestial shockwave rolls outward",
+  "subtitles.minecraftmod.fracture": "The ground fractures",
+  "subtitles.minecraftmod.ambient": "The Celestial Nail hums",
+  "subtitles.minecraftmod.dissolve": "The Celestial Nail settles into stone",
+  "block.minecraftmod.celestial_stone": "Celestial Stone",
+  "block.minecraftmod.engraved_celestial_stone": "Engraved Celestial Stone",
+  "block.minecraftmod.celestial_crystal": "Celestial Crystal",
+  "block.minecraftmod.luminous_core": "Luminous Celestial Core",
+  "block.minecraftmod.celestial_fracture": "Celestial Fracture",
+  "block.minecraftmod.celestial_frame": "Celestial Frame",
+  "subtitles.minecraftmod.rumble": "The impact reverberates",
+  "subtitles.minecraftmod.debris": "Debris crashes down"
+}

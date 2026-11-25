@@ -1,0 +1,101 @@
+{
+  "summon": {
+    "subtitle": "subtitles.minecraftmod.summon",
+    "sounds": [
+      {
+        "name": "minecraftmod:summon",
+        "attenuation_distance": 104
+      }
+    ]
+  },
+  "gather": {
+    "subtitle": "subtitles.minecraftmod.gather",
+    "sounds": [
+      {
+        "name": "minecraftmod:gather",
+        "attenuation_distance": 104
+      }
+    ]
+  },
+  "charge": {
+    "subtitle": "subtitles.minecraftmod.charge",
+    "sounds": [
+      {
+        "name": "minecraftmod:charge",
+        "attenuation_distance": 104
+      }
+    ]
+  },
+  "descent": {
+    "subtitle": "subtitles.minecraftmod.descent",
+    "sounds": [
+      {
+        "name": "minecraftmod:descent",
+        "attenuation_distance": 104
+      }
+    ]
+  },
+  "impact": {
+    "subtitle": "subtitles.minecraftmod.impact",
+    "sounds": [
+      {
+        "name": "minecraftmod:impact",
+        "attenuation_distance": 36
+      }
+    ]
+  },
+  "shockwave": {
+    "subtitle": "subtitles.minecraftmod.shockwave",
+    "sounds": [
+      {
+        "name": "minecraftmod:shockwave",
+        "attenuation_distance": 36
+      }
+    ]
+  },
+  "fracture": {
+    "subtitle": "subtitles.minecraftmod.fracture",
+    "sounds": [
+      {
+        "name": "minecraftmod:fracture",
+        "attenuation_distance": 36
+      }
+    ]
+  },
+  "ambient": {
+    "subtitle": "subtitles.minecraftmod.ambient",
+    "sounds": [
+      {
+        "name": "minecraftmod:ambient",
+        "attenuation_distance": 36
+      }
+    ]
+  },
+  "dissolve": {
+    "subtitle": "subtitles.minecraftmod.dissolve",
+    "sounds": [
+      {
+        "name": "minecraftmod:dissolve",
+        "attenuation_distance": 36
+      }
+    ]
+  },
+  "rumble": {
+    "subtitle": "subtitles.minecraftmod.rumble",
+    "sounds": [
+      {
+        "name": "minecraftmod:rumble",
+        "attenuation_distance": 80
+      }
+    ]
+  },
+  "debris": {
+    "subtitle": "subtitles.minecraftmod.debris",
+    "sounds": [
+      {
+        "name": "minecraftmod:debris",
+        "attenuation_distance": 55
+      }
+    ]
+  }
+}
