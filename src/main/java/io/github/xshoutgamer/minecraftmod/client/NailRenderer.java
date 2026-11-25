@@ -18,9 +18,9 @@ import net.minecraft.world.phys.AABB;
 import static io.github.xshoutgamer.minecraftmod.client.NailMesh.*;
 
 public final class NailRenderer extends EntityRenderer<CelestialNail> {
-    private static final ResourceLocation STONE = MinecraftMod.id("textures/entity/celestial_stone.png");
+    private static final ResourceLocation STONE = MinecraftMod.id("textures/entity/celestial_materials.png");
     private static final ResourceLocation ENERGY = MinecraftMod.id("textures/entity/celestial_energy.png");
-    private static final RenderType SOLID = RenderType.entityTranslucent(STONE);
+    private static final RenderType SOLID = CelestialRenderTypes.material(STONE);
     private static final RenderType GLOW = CelestialRenderTypes.energy(ENERGY);
     private static final RenderType DUST =
             RenderType.entityTranslucent(MinecraftMod.id("textures/entity/celestial_dust.png"));
@@ -164,9 +164,9 @@ public final class NailRenderer extends EntityRenderer<CelestialNail> {
             float y = (float) NailProfile.level(i - 1) * 24;
             float end = (float) NailProfile.level(i) * 24;
             float lower = (float) NailProfile.width(i - 1) * 4, upper = (float) NailProfile.width(i) * 4;
-            int color = i <= 2 || i >= 14 ? 0x7bc7e3 : i == 5 || i == 12 ? GOLD : IVORY;
-            int shadow = i <= 2 || i >= 14 ? 0x487ca9 : i == 5 || i == 12 ? 0x88552f : SILVER;
-            mesh.section(0, y, 0, end - y, lower, upper, 12, corner, color, shadow, 1);
+            int tile = i <= 2 || i >= 14 ? 2 : i == 5 || i == 12 ? 1 : i == 8 || i == 11 ? 3 : 0;
+            int shadow = tile == 2 ? 0xa6d8e8 : 0xc5c8cb;
+            mesh.section(0, y, 0, end - y, lower, upper, 12, corner, 0xffffff, shadow, 1, tile);
         }
         for (int i = 0; i < 8; i++) {
             double angle = Math.PI / 4 * i;
@@ -183,7 +183,7 @@ public final class NailRenderer extends EntityRenderer<CelestialNail> {
                 Point fragment = polar(0, 10.4F + (i % 4) * 2 + Mth.sin(time * 0.07F + i) * 0.65F, 0, 3 + recession * 2.55F, orbit);
                 mesh.diamond(fragment.x(), fragment.y(), fragment.z(), 0.4F + 0.14F * (i % 3), 2.4F, orbit, IVORY, recession);
                 mesh.section(fragment.x(), fragment.y() + 1.27F, fragment.z(), 0.15F, 0.52F, 0.45F, 4,
-                        orbit, GOLD, SILVER, recession);
+                        orbit, 0xffffff, 0xd9c6ab, recession, 1);
             }
         }
     }
@@ -236,8 +236,8 @@ public final class NailRenderer extends EntityRenderer<CelestialNail> {
 
     private static void descent(NailMesh mesh, float age, float time, float pulse, boolean reduced) {
         float length = Math.min(245, 62 + age * 28.0F);
-        mesh.section(0, 2, 0, 20 + length, 2.15F, 0.7F, 8, time * 0.14, BLUE, CYAN, 0.14F * pulse);
-        mesh.section(0, 9, 0, 15 + length, 0.9F, 0.02F, 6, -time * 0.1, WHITE, CYAN, 0.68F);
+        mesh.beam(2, 20 + length, 4.1F, 0.95F, time * 0.14, CYAN, 0.30F * pulse);
+        mesh.beam(9, 15 + length, 1.65F, 0.02F, -time * 0.1, WHITE, 0.67F);
         for (int i = 0; i < (reduced ? 3 : 7); i++) {
             float cycle = fract(i / 7F + age * 0.065F);
             float radius = 6 + cycle * 88;
@@ -255,10 +255,10 @@ public final class NailRenderer extends EntityRenderer<CelestialNail> {
     private static void aftermath(NailMesh mesh, float y, float floor, float age, float time, int radius, boolean reduced) {
         float beam = 0.11F + 0.19F * (float) Math.exp(-age * 0.055F);
         float columnHeight = CelestiaConfig.BEAM_HEIGHT.get() * (0.45F + 0.55F * (float) Math.exp(-age / 410F));
-        mesh.section(0, floor, 0, columnHeight, 2.4F, 0.08F, 8, time * 0.035, CYAN, WHITE, beam);
+        mesh.beam(floor, columnHeight, 3.2F, 0.25F, time * 0.035, CYAN, beam);
         if (!reduced) {
-            mesh.section(0, floor, 0, columnHeight * 0.89F, 11.2F, 0.21F, 12, -time * 0.02, BLUE, CYAN, beam * 0.42F);
-            mesh.section(0, floor, 0, columnHeight * 0.96F, 1.20F, 0.09F, 6, time * 0.075, WHITE, GOLD, beam * 0.7F);
+            mesh.beam(floor, columnHeight * 0.89F, 13.2F, 0.45F, -time * 0.02, BLUE, beam * 0.42F);
+            mesh.beam(floor, columnHeight * 0.96F, 1.45F, 0.21F, time * 0.075, WHITE, beam * 0.7F);
         }
         float flash = CelestiaConfig.FLASH.get().floatValue();
         if (age < 11 && flash > 0) {
@@ -317,8 +317,8 @@ public final class NailRenderer extends EntityRenderer<CelestialNail> {
         float length = Mth.sqrt((bx - ax) * (bx - ax) + (bz - az) * (bz - az));
         if (length < 0.001F) return;
         float x = (bz - az) * width / length, z = (ax - bx) * width / length;
-        mesh.quad(new Point(ax + x, ay, az + z), new Point(bx + x, by, bz + z),
-                new Point(bx - x, by, bz - z), new Point(ax - x, ay, az - z), color, alpha);
+        mesh.softQuad(new Point(ax + x, ay, az + z), new Point(ax - x, ay, az - z),
+                new Point(bx - x, by, bz - z), new Point(bx + x, by, bz + z), color, alpha);
     }
 
     private static void particles(PoseStack poses, MultiBufferSource buffers, float y,

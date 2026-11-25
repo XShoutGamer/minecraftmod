@@ -20,7 +20,7 @@ final class WeatherMeshes {
         mesh.glyphs(y - 0.11F, 42 * scale, time * 0.007, 28, GOLD, visibility * 0.81F);
         mesh.glyphs(y - 0.24F, 34 * scale, -time * 0.024, 20, CYAN, visibility * 0.65F);
         float beam = CelestiaConfig.BEAM_HEIGHT.get();
-        mesh.section(0, -beam * 0.61F, 0, beam, 1.7F + squeeze * 2.2F, 0.18F, 12, time * 0.02, CYAN, WHITE,
+        mesh.beam(-beam * 0.61F, beam, 2.7F + squeeze * 2.2F, 0.7F, time * 0.02, CYAN,
                 visibility * (0.15F + charge * 0.28F));
         mesh.ring(y + 31, 56 * scale, 0.46F, time * 0.009, sides, 5, BLUE, visibility * 0.27F);
         mesh.ring(y - 47, 41 * scale, 0.38F, -time * 0.014, sides, 7, GOLD, visibility * 0.25F);
@@ -124,11 +124,11 @@ final class WeatherMeshes {
             float wa = width * (1 + a * 1.9F), wb = width * (1 + b * 1.9F);
             Point from = between(start, end, a), to = between(start, end, b);
             float glow = strength * (1 - a) * (1 - a);
-            mesh.quad(new Point(from.x() + nx * wa, from.y(), from.z() + nz * wa),
+            mesh.softQuad(new Point(from.x() + nx * wa, from.y(), from.z() + nz * wa),
                     new Point(from.x() - nx * wa, from.y(), from.z() - nz * wa),
                     new Point(to.x() - nx * wb, to.y(), to.z() - nz * wb),
                     new Point(to.x() + nx * wb, to.y(), to.z() + nz * wb), color, glow);
-            mesh.quad(new Point(from.x(), from.y() + wa, from.z()), new Point(from.x(), from.y() - wa, from.z()),
+            mesh.softQuad(new Point(from.x(), from.y() + wa, from.z()), new Point(from.x(), from.y() - wa, from.z()),
                     new Point(to.x(), to.y() - wb, to.z()), new Point(to.x(), to.y() + wb, to.z()), color, glow * 0.73F);
         }
     }
@@ -183,7 +183,7 @@ final class WeatherMeshes {
         float flat = (float) Math.hypot(dx, dz);
         if (flat < 0.001F) return;
         float x = -dz / flat * width, z = dx / flat * width;
-        mesh.quad(new Point(a.x() + x, a.y(), a.z() + z), new Point(a.x() - x, a.y(), a.z() - z),
+        mesh.softQuad(new Point(a.x() + x, a.y(), a.z() + z), new Point(a.x() - x, a.y(), a.z() - z),
                 new Point(b.x() - x * 0.4F, b.y(), b.z() - z * 0.4F),
                 new Point(b.x() + x * 0.4F, b.y(), b.z() + z * 0.4F), color, alpha);
     }

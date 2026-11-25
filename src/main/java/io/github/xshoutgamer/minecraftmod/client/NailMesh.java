@@ -25,31 +25,69 @@ final class NailMesh {
     }
 
     void quad(Point a, Point b, Point c, Point d, int color, float opacity) {
-        float gain = Mth.clamp(opacity * this.opacity, 0, 1);
-        if (gain < 0.003F) return;
-        float rgb = additive ? gain : 1;
-        float r = ((color >> 16) & 255) / 255F * rgb;
-        float g = ((color >> 8) & 255) / 255F * rgb;
-        float bChannel = (color & 255) / 255F * rgb;
-        float alpha = additive ? 1 : gain;
-        vertex(a, r, g, bChannel, alpha, 0, 0);
-        vertex(b, r, g, bChannel, alpha, 1, 0);
-        vertex(c, r, g, bChannel, alpha, 1, 1);
-        vertex(d, r, g, bChannel, alpha, 0, 1);
+        quad(a, b, c, d, color, opacity, opacity, -1);
     }
 
-    private void vertex(Point p, float r, float g, float b, float alpha, float u, float v) {
-        consumer.addVertex(pose.pose(), p.x, p.y, p.z).setColor(r, g, b, alpha).setUv(u, v)
+    private void quad(Point a, Point b, Point c, Point d, int color, float start, float end, int tile) {
+        if (Math.max(start, end) * opacity < 0.003F) return;
+        float u = tile < 0 ? 0 : (tile % 2) * .5F + 2 / 512F;
+        float v = tile < 0 ? 0 : (tile / 2) * .5F + 2 / 512F;
+        float size = tile < 0 ? 1 : .5F - 4 / 512F;
+        float shade = 1;
+        if (tile >= 0) {
+            float dx = b.x - a.x, dz = b.z - a.z;
+            float len = Mth.sqrt(dx * dx + dz * dz);
+            if (len > .001F) shade = Math.min(1, .86F + .14F * (dx - dz * .6F) / len);
+        }
+        vertex(a, color, start, shade, u, v + size);
+        vertex(b, color, end, shade, u + size, v + size);
+        vertex(c, color, end, shade, u + size, v);
+        vertex(d, color, start, shade, u, v);
+    }
+
+    private void vertex(Point p, int color, float intensity, float shade, float u, float v) {
+        float gain = Mth.clamp(intensity * opacity, 0, 1);
+        float rgb = additive ? gain : shade;
+        consumer.addVertex(pose.pose(), p.x, p.y, p.z)
+                .setColor(((color >> 16) & 255) / 255F * rgb, ((color >> 8) & 255) / 255F * rgb,
+                        (color & 255) / 255F * rgb, additive ? 1 : gain).setUv(u, v)
                 .setOverlay(OverlayTexture.NO_OVERLAY).setLight(LightTexture.FULL_BRIGHT).setNormal(0, 1, 0);
+    }
+
+    // The narrow hot core rolls off into a broad, transparent penumbra.
+    void softQuad(Point a, Point b, Point c, Point d, int color, float alpha) {
+        Point leftCore = between(a, b, .36F), rightCore = between(a, b, .64F);
+        Point farLeft = between(d, c, .36F), farRight = between(d, c, .64F);
+        quad(a, leftCore, farLeft, d, color, 0, alpha, -1);
+        quad(leftCore, rightCore, farRight, farLeft, color, alpha, alpha, -1);
+        quad(rightCore, b, c, farRight, color, alpha, 0, -1);
+    }
+
+    private static Point between(Point a, Point b, float t) {
+        return new Point(Mth.lerp(t, a.x, b.x), Mth.lerp(t, a.y, b.y), Mth.lerp(t, a.z, b.z));
     }
 
     void section(float x, float y, float z, float height, float bottom, float top, int sides,
                  double turn, int colorA, int colorB, float alpha) {
+        section(x, y, z, height, bottom, top, sides, turn, colorA, colorB, alpha, additive ? -1 : 0);
+    }
+
+    void section(float x, float y, float z, float height, float bottom, float top, int sides,
+                 double turn, int colorA, int colorB, float alpha, int tile) {
         for (int i = 0; i < sides; i++) {
             double a = turn + TAU * i / sides, b = turn + TAU * (i + 1) / sides;
             quad(polar(x, y, z, bottom, a), polar(x, y, z, bottom, b),
                     polar(x, y + height, z, top, b), polar(x, y + height, z, top, a),
-                    i % 3 == 1 ? colorB : colorA, alpha);
+                    i % 3 == 1 ? colorB : colorA, alpha, alpha, tile);
+        }
+    }
+
+    void beam(float y, float height, float base, float tip, double turn, int color, float alpha) {
+        for (int plane = 0; plane < 3; plane++) {
+            double angle = turn + Math.PI * plane / 3;
+            softQuad(polar(0, y, 0, base, angle), polar(0, y, 0, base, angle + Math.PI),
+                    polar(0, y + height, 0, tip, angle + Math.PI), polar(0, y + height, 0, tip, angle),
+                    color, alpha * .65F);
         }
     }
 
@@ -58,8 +96,8 @@ final class NailMesh {
         for (int i = 0; i < sides; i++) {
             if (i % every == every - 1 && every > 1) continue;
             double a = turn + TAU * i / sides, b = turn + TAU * (i + 1) / sides;
-            quad(polar(0, y, 0, radius, a), polar(0, y, 0, radius, b),
-                    polar(0, y, 0, radius + width, b), polar(0, y, 0, radius + width, a), color, alpha);
+            softQuad(polar(0, y, 0, radius, a), polar(0, y, 0, radius + width, a),
+                    polar(0, y, 0, radius + width, b), polar(0, y, 0, radius, b), color, alpha);
         }
     }
 

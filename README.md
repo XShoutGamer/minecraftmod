@@ -23,4 +23,4 @@ With JDK 21, run `./gradlew build` (Windows: `gradlew.bat build`). Put the JAR f
 
 For a quick check, hold **B** briefly and confirm there is one cast. Watch from the crater edge as the rings fade and the monument solidifies. Walk into it to check collision, then reload the world to check persistence. For multiplayer, watch a single cast from two connected clients.
 
-To regenerate the entity textures and audio, run `python3 tools/generate_assets.py` with Pillow, NumPy, and FFmpeg with libvorbis.
+To regenerate the base effect texture and audio, run `python3 tools/generate_assets.py` with Pillow, NumPy, and FFmpeg with libvorbis. Run `python3 tools/generate_materials.py` to regenerate the weathered material atlas and animated block textures.

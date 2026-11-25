@@ -13,20 +13,7 @@ RATE = 44100
 
 def write_textures():
     TEXTURES.mkdir(parents=True, exist_ok=True)
-    rng = np.random.default_rng(840122)
-    y, x = np.mgrid[:256, :256]
-    stratum = 4 * np.sin(x * 0.23 + y * 0.41) + 5 * np.sin(y * 0.48 - x * 0.08)
-    grain = rng.normal(0, 2.8, x.shape)
-    borders = np.minimum(x, 255 - x)
-    veins = np.maximum(0, np.cos(x * 0.25 + y * 0.68 + np.sin(y * 0.21)) - 0.92) * 88
-    base = np.clip(241 + stratum + grain + veins - np.maximum(0, 3 - borders) * 3, 208, 255)
-    Image.fromarray(base.astype(np.uint8)).convert("RGBA").save(TEXTURES / "celestial_stone.png")
     Image.new("RGBA", (4, 4), (255, 255, 255, 255)).save(TEXTURES / "celestial_energy.png")
-    y, x = np.mgrid[:64, :64]
-    d = ((x - 31.5) ** 2 + (y - 31.5) ** 2) / 31.5 ** 2
-    dust = np.full((64, 64, 4), 255, dtype=np.uint8)
-    dust[:, :, 3] = (np.maximum(0, 1 - d) ** 2 * 255).astype(np.uint8)
-    Image.fromarray(dust).save(TEXTURES / "celestial_dust.png")
 
 
 def signal(name, duration, seed):

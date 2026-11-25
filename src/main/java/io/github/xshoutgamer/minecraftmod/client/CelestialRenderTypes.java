@@ -31,6 +31,18 @@ final class CelestialRenderTypes extends RenderStateShard {
         super("celestia", () -> {}, () -> {});
     }
 
+    static RenderType material(ResourceLocation texture) {
+        return RenderType.create("celestia_material", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS,
+                16384, true, true, RenderType.CompositeState.builder()
+                        .setShaderState(RENDERTYPE_ENTITY_TRANSLUCENT_SHADER)
+                        .setTextureState(new TextureStateShard(texture, true, false))
+                        .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+                        .setCullState(NO_CULL)
+                        .setLightmapState(LIGHTMAP)
+                        .setOverlayState(OVERLAY)
+                        .createCompositeState(false));
+    }
+
     static RenderType energy(ResourceLocation texture) {
         return RenderType.create("celestia_energy", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS,
                 16384, false, false, RenderType.CompositeState.builder()
