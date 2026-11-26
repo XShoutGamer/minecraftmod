@@ -39,6 +39,7 @@ public final class Heavenfall {
     private final Target target;
     private final HeavenfallConfig.Scale scale;
     private final Vec3 sky;
+    private Vec3 columnContact;
     private final Vec3 hand;
     private final int aftermath;
     private final long start;
@@ -51,6 +52,7 @@ public final class Heavenfall {
     private Heavenfall(ServerPlayer player, Target target, HeavenfallConfig.Scale scale, long now) {
         caster = player.getUUID();
         this.target = target;
+        columnContact = target.point;
         this.scale = scale;
         start = now;
         hand = player.getEyePosition().add(player.getLookAngle().scale(.65)).subtract(0, .35, 0);
@@ -176,7 +178,6 @@ public final class Heavenfall {
         if (next == Phase.COMPLETE) return false;
         boolean changed = next != phase || age <= 1;
         phase = next;
-        if (changed || age % 20 == 0) sync(level, impact, end, residue);
         if (phase == Phase.DESCENT && changed && player != null) cue(player, MinecraftMod.HEAVENFALL_DESCENT.get(), 2.2F, 1);
         if (phase == Phase.SUSTAINED) {
             if (changed) {
@@ -199,11 +200,32 @@ public final class Heavenfall {
         if (crater != null && player != null && player.isAlive() && CONFIG.terrain.get() && HexTerrain.canRewrite(player)) {
             editTerrain(player, now, budget, Math.clamp((age - impact + 1) / (float) scale.ticks(), 0, 1));
         }
+        boolean contactChanged = false;
+        if ((phase == Phase.SUSTAINED || phase == Phase.COLLAPSING) && crater != null && crater.centerExcavated()) {
+            var contact = craterContact(level, target.block, target.point);
+            contactChanged = !contact.equals(columnContact);
+            columnContact = contact;
+        }
+        if (changed || age % 20 == 0) sync(level, impact, end, residue);
+        else if (contactChanged) syncColumn(level, impact, end);
         if (phase == Phase.AFTERMATH && player != null && edits > 0 && !terrainPending()) {
             tell(player, "Heavenfall recorded " + edits + " terrain changes. Use Genesis or /hexterrain events to restore them.");
             edits = 0;
         }
         return true;
+    }
+
+    static Vec3 craterContact(ServerLevel level, BlockPos column, Vec3 impact) {
+        if (!level.hasChunkAt(column)) return impact;
+        // Sample just inside the hit block so a strike on a face or edge follows the excavated column.
+        double x = Math.clamp(impact.x, column.getX() + .001, column.getX() + .999);
+        double z = Math.clamp(impact.z, column.getZ() + .001, column.getZ() + .999);
+        var top = new Vec3(x, impact.y + .001, z);
+        var bottom = new Vec3(x, level.getMinBuildHeight(), z);
+        var floor = level.clip(new ClipContext(top, bottom, ClipContext.Block.COLLIDER,
+                ClipContext.Fluid.NONE, net.minecraft.world.phys.shapes.CollisionContext.empty()));
+        double y = floor.getType() == HitResult.Type.BLOCK ? floor.getLocation().y : bottom.y;
+        return new Vec3(impact.x, Math.min(impact.y, y), impact.z);
     }
 
     private boolean terrainPending() {
@@ -259,25 +281,32 @@ public final class Heavenfall {
             case ENERGY_CONVERGENCE -> broadcast(level, APERTURE, phase, sky, 34, scale.aperture(), start + 24);
             case DESCENT -> {
                 broadcast(level, APERTURE, phase, sky, 8, scale.aperture(), start + 58);
-                broadcast(level, COLUMN, phase, sky, 8, scale.beam(), start + 58);
             }
             case SUSTAINED -> {
                 broadcast(level, APERTURE, phase, sky, scale.ticks(), scale.aperture(), start + impact);
-                broadcast(level, COLUMN, phase, sky, scale.ticks(), scale.beam(), start + impact);
             }
             case COLLAPSING -> {
                 broadcast(level, APERTURE, phase, sky, 42, scale.aperture(), start + end);
-                broadcast(level, COLUMN, phase, sky, 42, scale.beam(), start + end);
             }
             case AFTERMATH -> {
                 if (aftermath > 0) broadcast(level, RESIDUE, phase, sky, aftermath, scale.crater(), start + residue);
             }
             default -> { }
         }
+        syncColumn(level, impact, end);
+    }
+
+    private void syncColumn(ServerLevel level, int impact, int end) {
+        switch (phase) {
+            case DESCENT -> broadcast(level, COLUMN, phase, sky, 8, scale.beam(), start + 58);
+            case SUSTAINED -> broadcast(level, COLUMN, phase, sky, scale.ticks(), scale.beam(), start + impact);
+            case COLLAPSING -> broadcast(level, COLUMN, phase, sky, 42, scale.beam(), start + end);
+            default -> { }
+        }
     }
 
     private void broadcast(ServerLevel level, int kind, Phase phase, Vec3 origin, int duration, float radius, long from) {
-        var scene = new HexNetwork.Scene(level.dimension().location(), caster, origin, target.point, from,
+        var scene = new HexNetwork.Scene(level.dimension().location(), caster, origin, kind == COLUMN ? columnContact : target.point, from,
                 duration, kind, phase.ordinal(), radius);
         double range = (double) scale.range() * scale.range();
         for (var viewer : level.players()) {

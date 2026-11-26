@@ -127,6 +127,8 @@ public final class HexClient {
                     || scene.kind() == ScarletSovereignty.FORMATION || scene.kind() == ScarletSovereignty.RELEASE_WAVE
                     || scene.kind() == ScarletSovereignty.TERRAIN_FX || scene.kind() == ScarletSovereignty.DOMINION_FX
                     || scene.kind() > Heavenfall.AIM || scene.kind() == Heavenfall.AIM && scene.variant() == Heavenfall.Phase.HEAVEN_OPENING.ordinal() ? scene.start() ^ scene.target().hashCode() : 0;
+            // The column's target moves downward as blocks are removed. Its sky origin stays fixed.
+            if (scene.kind() == Heavenfall.COLUMN) instance = scene.start() ^ scene.origin().hashCode();
             int variant = scene.kind() == ScarletSovereignty.PRESENCE ? 0 : scene.variant();
             if (scene.kind() == 6 + HexSpell.REWRITE.ordinal() && scene.variant() == HexNetwork.REWRITE_FADE) {
                 variant = HexNetwork.REWRITE_WAVE;

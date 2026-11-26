@@ -17,6 +17,7 @@ final class HeavenfallTerrain {
     private final boolean excavation;
     private int elevation, lastElevation;
     private float editedRadius;
+    private boolean centerExcavated;
     private Column current;
 
     HeavenfallTerrain(BlockPos center, HeavenfallConfig.Scale scale, UUID event, boolean excavation) {
@@ -46,6 +47,8 @@ final class HeavenfallTerrain {
         columns.addAll(pending);
     }
 
+    boolean centerExcavated() { return centerExcavated; }
+
     float editedRadius() { return editedRadius; }
 
     boolean finished() { return current == null && columns.isEmpty(); }
@@ -73,6 +76,7 @@ final class HeavenfallTerrain {
             boolean covered = excavation || covered(pos);
             if (covered && journal.heavenfall(player, pos, event, excavation) > 0) {
                 edited++;
+                if (excavation && current.distance() == 0 && pos.getY() <= y) centerExcavated = true;
                 editedRadius = Math.max(editedRadius, (float) current.distance());
             }
             if (elevation < lastElevation) current = null;
