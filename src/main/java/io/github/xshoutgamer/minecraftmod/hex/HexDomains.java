@@ -90,7 +90,7 @@ public final class HexDomains {
         TEMPORAL.computeIfAbsent(server, key -> new java.util.HashSet<>()).clear();
         if (server.getTickCount() % 20 == 0) {
             for (var player : server.getPlayerList().getPlayers()) {
-                if (player.hasPermissions(2)) HexTerrain.get(player.serverLevel()).restoreExpired(player);
+                if (HexTerrain.canRestore(player)) HexTerrain.get(player.serverLevel()).restoreExpired(player);
             }
         }
         var domains = WORLDS.get(server);

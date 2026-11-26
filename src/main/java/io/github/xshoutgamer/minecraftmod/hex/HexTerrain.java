@@ -35,6 +35,26 @@ public final class HexTerrain extends SavedData {
         return level.getDataStorage().computeIfAbsent(FACTORY, "minecraftmod_hex_terrain");
     }
 
+    private static boolean isWorldOwner(ServerPlayer player) {
+        var server = player.serverLevel().getServer();
+        return server.isSingleplayer() && server.isSingleplayerOwner(player.getGameProfile());
+    }
+
+    static boolean canRewrite(ServerPlayer player) {
+        return isWorldOwner(player) ? HexConfig.OWNER_REWRITE.get()
+                : HexConfig.EDIT.get() && player.hasPermissions(2);
+    }
+
+    static boolean canRestore(ServerPlayer player) {
+        return isWorldOwner(player) || player.hasPermissions(2);
+    }
+
+    static String rewriteRestriction(ServerPlayer player) {
+        if (isWorldOwner(player)) return "Reality Rewrite is cosmetic. Enable singlePlayerTerrainRewrite in the Hex config to edit blocks.";
+        if (!HexConfig.EDIT.get()) return "Reality Rewrite is cosmetic. The server has terrainRewrite disabled.";
+        return "Reality Rewrite is cosmetic. Only a server operator can edit blocks with it.";
+    }
+
     public static void recordNailCut(ServerLevel level, ServerPlayer player, BlockPos pos, BlockState before) {
         if (!HexConfig.RECORD_NAIL.get() || !player.hasPermissions(2) || before.hasBlockEntity()
                 || !before.getFluidState().isEmpty() || !level.isEmptyBlock(pos)) return;
@@ -87,7 +107,7 @@ public final class HexTerrain extends SavedData {
 
     int rewrite(ServerPlayer player, BlockPos column) {
         var level = player.serverLevel();
-        if (!HexConfig.EDIT.get() || !player.hasPermissions(2) || !level.hasChunkAt(column)
+        if (!canRewrite(player) || !level.hasChunkAt(column)
                 || changes.size() >= HexConfig.RECORDS.get()) return 0;
         int surface = Math.min(level.getMaxBuildHeight() - 1, column.getY() + 10);
         int minY = Math.max(level.getMinBuildHeight(), column.getY() - 13);
@@ -139,7 +159,7 @@ public final class HexTerrain extends SavedData {
     boolean restore(ServerPlayer player, BlockPos pos) {
         var change = changes.get(pos);
         var level = player.serverLevel();
-        if (change == null || !change.owner.equals(player.getUUID()) || !player.hasPermissions(2)
+        if (change == null || !change.owner.equals(player.getUUID()) || !canRestore(player)
                 || !level.hasChunkAt(pos) || !level.getBlockState(pos).equals(change.after)) return false;
         if (!replace(player, pos, change.after, change.before)) return false;
         changes.remove(pos);

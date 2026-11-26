@@ -138,6 +138,10 @@ final class HexAbilities {
                 } else {
                     if (runes.size() == 5) runes.removeFirst();
                     long id = now;
+                    if (Rune.values()[runeMode] == Rune.RESTORATION && domain.gameplay() && !HexTerrain.canRestore(player)) {
+                        feedback(player, "Restoration Runes require the world owner or a server operator.");
+                        return;
+                    }
                     if (Rune.values()[runeMode] == Rune.RESTORATION && domain.gameplay()
                             && HexTerrain.get(player.serverLevel()).restoration(player.getUUID(), BlockPos.containing(target),
                                     HexConfig.RUNE_RADIUS.get()).isEmpty()) {
@@ -171,6 +175,10 @@ final class HexAbilities {
             }
             case GENESIS -> {
                 if (domain.gameplay()) {
+                    if (!HexTerrain.canRestore(player)) {
+                        feedback(player, "Genesis requires the world owner or a server operator.");
+                        return;
+                    }
                     terrainWork = HexTerrain.get(player.serverLevel()).restoration(player.getUUID(), BlockPos.containing(target), HexConfig.GENESIS_RADIUS.get() * domain.scale());
                     if (terrainWork.isEmpty()) {
                         terrainWork = null;
@@ -215,7 +223,7 @@ final class HexAbilities {
             }
             case REWRITE -> {
                 int radius = (int) (net.minecraft.util.Mth.lerp(strength, 2, HexConfig.REWRITE_RADIUS.get()) * domain.scale());
-                if (domain.gameplay() && HexConfig.EDIT.get() && player.hasPermissions(2)) {
+                if (domain.gameplay() && HexTerrain.canRewrite(player)) {
                     var center = BlockPos.containing(target.add(0, -.03, 0));
                     restoring = HexConfig.REWRITE.get() == HexConfig.Rewrite.NATURAL;
                     terrainWork = restoring ? HexTerrain.get(player.serverLevel()).restoration(player.getUUID(), center, radius)
@@ -228,7 +236,7 @@ final class HexAbilities {
                     reportWork = true;
                     changedBlocks = 0;
                 } else if (domain.gameplay()) {
-                    feedback(player, "Reality Rewrite is cosmetic here. Terrain edits require the server setting and operator permission.");
+                    feedback(player, HexTerrain.rewriteRestriction(player));
                 }
                 scene(player, spell, 0, eye, target, now, 68, radius);
             }

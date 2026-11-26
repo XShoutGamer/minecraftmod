@@ -19,7 +19,7 @@ public final class HexConfig {
     public static final ModConfigSpec.EnumValue<Target> TARGET;
     public static final ModConfigSpec.IntValue RADIUS, ULTRA_RADIUS, EXPANSION, COLLAPSE, LIFE, COOLDOWN_PERCENT, TELEKINESIS_LIMIT,
             TELEKINESIS_RANGE, EDITS, RECORDS, TEMPORAL_TICKS, RUNE_RADIUS;
-    public static final ModConfigSpec.BooleanValue EDIT, RECORD_NAIL, FLIGHT, GAMEPLAY, DEMO_ORBS;
+    public static final ModConfigSpec.BooleanValue EDIT, OWNER_REWRITE, RECORD_NAIL, FLIGHT, GAMEPLAY, DEMO_ORBS;
     public static final ModConfigSpec.DoubleValue GRAVITY, RESISTANCE, VOLUME, DENSITY, SMOKE, TENDRILS, LIGHTNING, GLOW, FOG;
     public static final ModConfigSpec.BooleanValue POST_EFFECTS, ORB_PLAYERS, ORB_SELF, ORB_TERRAIN, TEMPORAL_FREEZE, ECHO_ATTACK, ECHO_GUARD, DEBUG;
     public static final ModConfigSpec.IntValue ORB_CHARGE, ORB_RADIUS, ORB_MAX_RADIUS, ORB_ENHANCED_RADIUS, RUNE_LIFE,
@@ -37,7 +37,9 @@ public final class HexConfig {
         COOLDOWN_PERCENT = server.defineInRange("cooldownPercent", 100, 0, 400);
         TELEKINESIS_LIMIT = server.defineInRange("telekinesisObjects", 3, 1, 12);
         TELEKINESIS_RANGE = server.defineInRange("telekinesisRange", 36, 6, 64);
-        EDIT = server.comment("Allow operators or single-player hosts to rewrite ordinary terrain.").define("terrainRewrite", false);
+        EDIT = server.comment("Allow operators on a dedicated server to rewrite ordinary terrain.").define("terrainRewrite", false);
+        OWNER_REWRITE = server.comment("Allow the local world owner to use Reality Rewrite, even with cheats off.")
+                .define("singlePlayerTerrainRewrite", true);
         REWRITE = server.defineEnum("rewritePreset", Rewrite.SCARLET);
         REWRITE_BLOCK = server.define("rewriteCustomBlock", "minecraft:red_terracotta");
         REWRITE_RADIUS = server.defineInRange("rewriteMaxRadius", 13, 2, 25);
