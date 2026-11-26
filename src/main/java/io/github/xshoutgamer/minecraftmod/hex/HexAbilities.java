@@ -84,7 +84,10 @@ final class HexAbilities {
     }
 
     void press(HexDomains.Domain domain, ServerPlayer player, HexSpell spell, long now) {
-        if (charging != null || now < readyAt[spell.ordinal()]) return;
+        if (charging != null || now < readyAt[spell.ordinal()]) {
+            if (spell == HexSpell.REWRITE && charging != spell) feedback(player, "Reality Rewrite is still recovering.");
+            return;
+        }
         if (player.position().subtract(domain.center).horizontalDistance() > domain.reach(now)) {
             player.displayClientMessage(Component.literal("Return to your Scarlet Hex to cast."), true);
             return;
@@ -240,29 +243,50 @@ final class HexAbilities {
                 held.clear();
             }
             case REWRITE -> {
-                int radius = rewriteRadius(now - chargeStart);
-                if (domain.gameplay() && HexTerrain.canRewrite(player)) {
-                    var center = BlockPos.containing(target.add(0, -.03, 0));
-                    restoring = HexConfig.REWRITE.get() == HexConfig.Rewrite.NATURAL;
-                    workShape = HexConfig.VOLUME_SHAPE.get();
-                    workCenter = center;
-                    workStart = now;
-                    scannedBlocks = 0;
-                    terrainWork = restoring ? HexTerrain.get(player.serverLevel()).restoration(player.getUUID(), center, radius)
-                            : HexTerrain.volume(center, radius, workShape);
-                    if (terrainWork.isEmpty()) {
-                        terrainWork = null;
-                        feedback(player, "Natural Restoration found no recorded changes in this patch.");
-                        return;
-                    }
-                    reportWork = true;
-                    changedBlocks = 0;
-                } else if (domain.gameplay()) {
-                    feedback(player, HexTerrain.rewriteRestriction(player));
+                if (!domain.gameplay()) {
+                    feedback(player, domain.mode == HexConfig.Target.AURA
+                            ? "Reality Rewrite cannot edit terrain in cosmetic Aura mode."
+                            : "Reality Rewrite cannot edit terrain while Hex gameplay effects are disabled.");
+                    return;
                 }
-                scene(player, spell, 0, eye, target, now, Math.max(68, radius * 5), radius);
-                if (domain.gameplay()) {
-                    corruptionCenter = target;
+                if (!HexTerrain.canRewrite(player)) {
+                    feedback(player, HexTerrain.rewriteRestriction(player));
+                    return;
+                }
+                if (terrainWork != null) {
+                    feedback(player, "Wait for your current terrain spell to finish.");
+                    return;
+                }
+                var hit = trace(player, HexConfig.TELEKINESIS_RANGE.get() * domain.scale());
+                if (hit == null || hit.getType() != HitResult.Type.BLOCK) {
+                    feedback(player, "Aim at a block within reach, then release Reality Rewrite.");
+                    return;
+                }
+                int radius = rewriteRadius(now - chargeStart);
+                var journal = HexTerrain.get(player.serverLevel());
+                var center = hit.getBlockPos();
+                restoring = HexConfig.REWRITE.get() == HexConfig.Rewrite.NATURAL;
+                if (!restoring && journal.full()) {
+                    feedback(player, "The terrain journal is full. Use Genesis to restore earlier changes before casting again.");
+                    return;
+                }
+                workShape = HexConfig.VOLUME_SHAPE.get();
+                terrainWork = restoring ? journal.restoration(player.getUUID(), center, radius)
+                        : HexTerrain.volume(center, radius, workShape);
+                if (terrainWork.isEmpty()) {
+                    terrainWork = null;
+                    feedback(player, restoring ? "Natural Restoration found no recorded changes in this patch."
+                            : "Reality Rewrite selected no blocks. Check the corruption coverage settings.");
+                    return;
+                }
+                workCenter = center;
+                workStart = now;
+                scannedBlocks = 0;
+                reportWork = true;
+                changedBlocks = 0;
+                scene(player, spell, 0, eye, hit.getLocation(), now, Math.max(68, radius * 5), radius);
+                if (!restoring) {
+                    corruptionCenter = Vec3.atCenterOf(center);
                     corruptionRadius = radius;
                     corruptionStart = now;
                     corrupted.clear();
@@ -314,6 +338,12 @@ final class HexAbilities {
                 int chargeTime = charging == HexSpell.REWRITE ? HexConfig.REWRITE_CHARGE.get() : HexConfig.ORB_CHARGE.get();
                 float growth = Math.clamp((now - chargeStart) / (float) chargeTime, .15F, 1F);
                 HexDomains.scene(player, HexNetwork.HAND_FX, charging.ordinal(), eye, eye.add(player.getLookAngle()), now, 7, growth);
+                if (charging == HexSpell.REWRITE) {
+                    var hit = trace(player, HexConfig.TELEKINESIS_RANGE.get() * domain.scale());
+                    if (hit != null && hit.getType() == HitResult.Type.BLOCK) {
+                        scene(player, charging, 1, eye, hit.getLocation(), now, 7, rewriteRadius(now - chargeStart));
+                    }
+                }
             }
         }
         if (orb != null) tickOrb(domain, player, now);
@@ -373,13 +403,22 @@ final class HexAbilities {
                     changedAt = Vec3.atCenterOf(pos);
                 }
             }
+            if (!restoring && changedBlocks == 0 && edits > 0 && reportWork) {
+                feedback(player, "Reality Rewrite is transforming blocks.");
+            }
             changedBlocks += edits;
             if (!restoring && changedAt != null && now % 4 == 0) {
                 scene(player, PersonalMagic.DISSOLVE_FX, 3, changedAt.add(0,-.8,0), changedAt, now, 14, 1.4F);
             }
             if (terrainWork.isEmpty() || !restoring && journal.full()) {
-                if (reportWork) feedback(player, (restoring ? "Genesis restored " : "Reality Rewrite changed ") + changedBlocks + " blocks."
-                        + (HexConfig.DEBUG.get() && !restoring ? " Scanned " + scannedBlocks + (journal.full() ? " · journal full." : ".") : ""));
+                if (reportWork) {
+                    String result = !restoring && changedBlocks == 0
+                            ? "Reality Rewrite found no eligible blocks. Try unmodified stone, soil, or wood."
+                            : (restoring ? "Restored " : "Reality Rewrite changed ") + changedBlocks + " blocks.";
+                    if (!restoring && journal.full()) result += " The terrain journal is full.";
+                    if (HexConfig.DEBUG.get() && !restoring) result += " Scanned " + scannedBlocks + " positions.";
+                    feedback(player, result);
+                }
                 terrainWork = null;
                 reportWork = false;
                 changedBlocks = 0;
