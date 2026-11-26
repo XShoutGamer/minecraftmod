@@ -81,7 +81,7 @@ def signal(name, duration, seed):
             age = np.maximum(t-start, 0)
             wave += (t >= start) * np.exp(-17*age) * (grit*noise + .18*soft_noise)
         wave *= .68
-    elif name in ("sovereign_transformation", "sovereign_quick"):
+    elif name == "sovereign_quick":
         cinematic = u * 24
         warmth = .44 + .28 * np.clip((cinematic - 4) / 6, 0, 1)
         rises = sum(gain * np.exp(-((cinematic - at) / width) ** 2)
@@ -127,7 +127,7 @@ def write_audio(selected=()):
     cues = {"summon": 1.7, "gather": 1.1, "charge": 5.78, "descent": 0.82, "impact": 3.1,
             "shockwave": 1.2, "fracture": 0.9, "ambient": 3.8, "dissolve": 1.8, "debris": 1.75, "rumble": 6.4, "release": 2.25,
             "divine_arc": 2.4, "crimson_arc": 1.55, "golden_flow": 2.3, "residual_arc": 1.32, "sovereign_current": 2.2, "sovereign_crown": 2.8,
-            "sovereign_release": 3.4, "sovereign_transformation": 24, "sovereign_quick": 6}
+            "sovereign_release": 3.4, "sovereign_quick": 6}
     for i, (name, duration) in enumerate(cues.items()):
         if selected and name not in selected:
             continue
