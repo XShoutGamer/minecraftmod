@@ -70,14 +70,21 @@ final class HexAbilities {
     }
 
     static BlockHitResult trace(ServerPlayer player, double range) {
+        return trace(player, range, ClipContext.Fluid.NONE);
+    }
+
+    static BlockHitResult trace(ServerPlayer player, double range, ClipContext.Fluid fluids) {
         var start = player.getEyePosition();
         var end = start.add(player.getLookAngle().scale(range));
         var level = player.serverLevel();
-        var context = new ClipContext(start, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player);
+        var context = new ClipContext(start, end, ClipContext.Block.COLLIDER, fluids, player);
         var hit = BlockGetter.traverseBlocks(start, end, context, (clip, pos) -> {
             if (!level.hasChunkAt(pos)) return BlockHitResult.miss(Vec3.atCenterOf(pos), player.getDirection(), pos.immutable());
             var state = level.getBlockState(pos);
-            return level.clipWithInteractionOverride(start, end, pos, clip.getBlockShape(state, level, pos), state);
+            var block = level.clipWithInteractionOverride(start, end, pos, clip.getBlockShape(state, level, pos), state);
+            var liquid = clip.getFluidShape(state.getFluidState(), level, pos).clip(start, end, pos);
+            return liquid != null && (block == null || liquid.getLocation().distanceToSqr(start) < block.getLocation().distanceToSqr(start))
+                    ? liquid : block;
         }, clip -> null);
         return hit;
     }

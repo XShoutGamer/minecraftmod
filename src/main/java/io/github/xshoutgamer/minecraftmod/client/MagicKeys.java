@@ -2,6 +2,7 @@ package io.github.xshoutgamer.minecraftmod.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import io.github.xshoutgamer.minecraftmod.hex.HexNetwork;
+import io.github.xshoutgamer.minecraftmod.hex.Heavenfall;
 import io.github.xshoutgamer.minecraftmod.hex.PersonalMagic;
 import io.github.xshoutgamer.minecraftmod.hex.ScarletSovereignty;
 import io.github.xshoutgamer.minecraftmod.hex.PersonalMagic.Power;
@@ -20,6 +21,8 @@ final class MagicKeys {
     private static final KeyMapping SECONDARY = key("darkhold_secondary", GLFW.GLFW_KEY_I);
     private static final KeyMapping SOVEREIGN = key("sovereignty", GLFW.GLFW_KEY_U);
     private static final KeyMapping DARK = key("darkhold_cast", GLFW.GLFW_KEY_K);
+    private static final KeyMapping HEAVENFALL_BYPASS = key("heavenfall_bypass", GLFW.GLFW_KEY_LEFT_ALT);
+    private static boolean heavenfallHeld, useHandled;
     private static final java.util.Set<KeyMapping> HELD = new java.util.HashSet<>();
     private static Power personal = Power.PROJECTION, dark = Power.ECLIPSE;
     private static int bookTicks;
@@ -30,7 +33,7 @@ final class MagicKeys {
     static boolean reserved(KeyMapping mapping) { return mapping.same(MENU) || mapping.same(CAST); }
 
     static void register(RegisterKeyMappingsEvent event) {
-        for (var key : new KeyMapping[]{QUICK, MENU, CAST, BOOK, DARK, SECONDARY, SOVEREIGN}) event.register(key);
+        for (var key : new KeyMapping[]{QUICK, MENU, CAST, BOOK, DARK, SECONDARY, SOVEREIGN, HEAVENFALL_BYPASS}) event.register(key);
     }
 
     static void select(boolean grimoire, Power power) { if (grimoire) dark = power; else personal = power; }
@@ -38,6 +41,13 @@ final class MagicKeys {
 
     static void tick(boolean summoned) {
         var game = Minecraft.getInstance();
+        boolean useDown = HexWheel.physicallyHeld(game.options.keyUse);
+        boolean canCast = game.player != null && game.screen == null && game.isWindowActive() && HexClient.heavenfallAvailable();
+        if (heavenfallHeld && (!useDown || !canCast || HexWheel.physicallyHeld(HEAVENFALL_BYPASS))) {
+            send(!canCast || HexWheel.physicallyHeld(HEAVENFALL_BYPASS) ? Heavenfall.CANCEL : Heavenfall.RELEASE, 0);
+            heavenfallHeld = false;
+        }
+        if (!useDown) useHandled = false;
         boolean menu = pressed(MENU), quick = pressed(QUICK), cast = pressed(CAST), scripture = pressed(DARK);
         boolean ultimate = pressed(SOVEREIGN);
         boolean secondary = pressed(SECONDARY);
@@ -88,7 +98,24 @@ final class MagicKeys {
         }
     }
 
+    static void heavenfall(net.neoforged.neoforge.client.event.InputEvent.InteractionKeyMappingTriggered event) {
+        var game = Minecraft.getInstance();
+        if (!event.isUseItem() || !HexClient.heavenfallAvailable() || game.screen != null
+                || !game.isWindowActive() || HexWheel.physicallyHeld(HEAVENFALL_BYPASS)) return;
+        event.setCanceled(true);
+        event.setSwingHand(false);
+        if (useHandled) return;
+        useHandled = true;
+        send(Heavenfall.PRESS, 0);
+        heavenfallHeld = HexWheel.physicallyHeld(game.options.keyUse);
+        if (!heavenfallHeld) send(Heavenfall.RELEASE, 0);
+    }
+
+    static boolean heavenfallCharging() { return heavenfallHeld; }
+
     static void resetSovereignty() {
+        heavenfallHeld = false;
+        useHandled = false;
         sovereignHeld = false;
         HELD.remove(SOVEREIGN);
     }

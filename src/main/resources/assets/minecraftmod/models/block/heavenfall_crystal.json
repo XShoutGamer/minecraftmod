@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "minecraftmod:block/scarlet_stone",
+    "down": "minecraftmod:block/scarlet_stone",
+    "north": "minecraftmod:block/blight_bricks",
+    "south": "minecraftmod:block/blight_bricks",
+    "east": "minecraftmod:block/blight_bricks",
+    "west": "minecraftmod:block/blight_bricks",
+    "up": "minecraftmod:block/heavenfall_crystal"
+  }
+}

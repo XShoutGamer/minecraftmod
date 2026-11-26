@@ -195,7 +195,7 @@ public final class ScarletSovereignty {
         }
         if (phase == Phase.COLLAPSING) {
             if (now - collapse >= HexConfig.SOVEREIGN_END.get() / 2) removeConstructs();
-            if (endingRepair != null && !endingRepair.isEmpty()) restoreBatch(player, endingRepair, now);
+            if (endingRepair != null && !endingRepair.isEmpty()) restoreBatch(player, endingRepair, now, terrainEvent);
         }
         if (before != phase || now % 4 == 0) sync(player, now);
     }
@@ -412,16 +412,16 @@ public final class ScarletSovereignty {
 
     private void tickRepair(ServerPlayer player, long now) {
         if (repair == null) return;
-        restoreBatch(player, repair, now);
+        restoreBatch(player, repair, now, null);
         if (repair.isEmpty()) repair = null;
     }
 
-    private void restoreBatch(ServerPlayer player, Deque<BlockPos> work, long now) {
+    private void restoreBatch(ServerPlayer player, Deque<BlockPos> work, long now, UUID event) {
         var journal = HexTerrain.get(level);
         int budget = journal.claimReconstructionBudget(now, 1.5);
         for (int i = 0; i < budget && !work.isEmpty(); i++) {
             var pos = work.removeFirst();
-            if (journal.restore(player, pos) && now % 3 == 0 && i % Math.max(8, budget / 5) == 0) {
+            if (journal.restore(player, pos, event) && now % 3 == 0 && i % Math.max(8, budget / 5) == 0) {
                 var at = Vec3.atCenterOf(pos);
                 HexDomains.scene(player, HexNetwork.RECONSTRUCTION_FX, 0, at, at, now, 32, 5);
             }
@@ -438,6 +438,7 @@ public final class ScarletSovereignty {
     }
 
     private void end(ServerPlayer player, long now) {
+        Heavenfall.cancel(player);
         phase = Phase.COLLAPSING;
         collapse = now;
         finalizeTerrain(player, now);
@@ -578,6 +579,7 @@ public final class ScarletSovereignty {
     }
 
     static void clear(ServerPlayer player) {
+        Heavenfall.cancel(player);
         var current = ACTIVE.remove(player);
         if (current == null) return;
         if (current.phase.reigning()) {

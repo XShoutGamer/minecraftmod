@@ -1,4 +1,8 @@
 {
+  "key.minecraftmod.heavenfall_bypass": "Heavenfall interaction bypass",
+  "block.minecraftmod.heavenfall_crystal": "Heavenfall Crystal",
+  "subtitles.minecraftmod.heavenfall_open": "Heavenfall aperture opens",
+  "subtitles.minecraftmod.heavenfall_descent": "Heavenfall chaos descends",
   "subtitles.minecraftmod.sovereign_transformation": "Scarlet Sovereignty builds",
   "subtitles.minecraftmod.sovereign_current": "Scarlet currents converge",
   "subtitles.minecraftmod.sovereign_crown": "Scarlet crown manifests",

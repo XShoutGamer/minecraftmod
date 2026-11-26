@@ -2,6 +2,7 @@ package io.github.xshoutgamer.minecraftmod;
 
 import io.github.xshoutgamer.minecraftmod.nail.CelestialNail;
 import io.github.xshoutgamer.minecraftmod.hex.HexConfig;
+import io.github.xshoutgamer.minecraftmod.hex.Heavenfall;
 import io.github.xshoutgamer.minecraftmod.hex.HexDomains;
 import io.github.xshoutgamer.minecraftmod.hex.HexTerrainCommands;
 import io.github.xshoutgamer.minecraftmod.hex.PersonalMagic;
@@ -55,6 +56,8 @@ public final class MinecraftMod {
     public static final DeferredHolder<SoundEvent, SoundEvent> VOID_SOUND = sound("singularity_collapse");
     public static final DeferredHolder<SoundEvent, SoundEvent> DARKHOLD_SOUND = sound("darkhold_cast");
     public static final DeferredHolder<SoundEvent, SoundEvent> CHAOS_SOUND = sound("chaos_dissolve");
+    public static final DeferredHolder<SoundEvent, SoundEvent> HEAVENFALL_OPEN = sound("heavenfall_open");
+    public static final DeferredHolder<SoundEvent, SoundEvent> HEAVENFALL_DESCENT = sound("heavenfall_descent");
     public static final DeferredHolder<SoundEvent, SoundEvent> SOVEREIGN_TRANSFORMATION = sound("sovereign_transformation");
     public static final DeferredHolder<SoundEvent, SoundEvent> SOVEREIGN_QUICK = sound("sovereign_quick");
     public static final DeferredHolder<SoundEvent, SoundEvent> SOVEREIGN_CURRENT = sound("sovereign_current");
@@ -71,6 +74,8 @@ public final class MinecraftMod {
         NeoForge.EVENT_BUS.addListener(HexTerrainCommands::register);
         NeoForge.EVENT_BUS.addListener(HexDomains::tick);
         NeoForge.EVENT_BUS.addListener(ScarletSovereignty::tick);
+        NeoForge.EVENT_BUS.addListener(Heavenfall::tick);
+        NeoForge.EVENT_BUS.addListener(Heavenfall::unload);
         NeoForge.EVENT_BUS.addListener(ScarletSovereignty::damage);
         NeoForge.EVENT_BUS.addListener(ScarletSovereignty::target);
         NeoForge.EVENT_BUS.addListener(ScarletSovereignty::impact);

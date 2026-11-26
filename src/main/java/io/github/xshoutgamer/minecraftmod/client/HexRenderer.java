@@ -6,6 +6,7 @@ import com.mojang.blaze3d.vertex.ByteBufferBuilder;
 import com.mojang.math.Axis;
 import io.github.xshoutgamer.minecraftmod.CelestiaConfig;
 import io.github.xshoutgamer.minecraftmod.hex.HexConfig;
+import io.github.xshoutgamer.minecraftmod.hex.Heavenfall;
 import io.github.xshoutgamer.minecraftmod.hex.HexNetwork;
 import io.github.xshoutgamer.minecraftmod.hex.HexSpell;
 import io.github.xshoutgamer.minecraftmod.hex.PersonalMagic;
@@ -272,6 +273,10 @@ final class HexRenderer {
     }
 
     private void spell(HexNetwork.Scene scene) {
+        if (scene.kind() >= Heavenfall.AIM && scene.kind() <= Heavenfall.GROUND) {
+            heavenfall(scene);
+            return;
+        }
         if (scene.kind() >= HexNetwork.RECONSTRUCTION_FX) {
             sovereignty(scene);
             return;
@@ -401,6 +406,119 @@ final class HexRenderer {
                 case ECHO -> echo(scene, at);
                 default -> motes(light, count(51, HexConfig.DENSITY.get()), r, r * 2, time, alpha, 0);
             }
+        }
+        pose.popPose();
+    }
+
+    private void heavenfall(HexNetwork.Scene scene) {
+        var phase = Heavenfall.Phase.values()[scene.variant()];
+        var at = scene.target();
+        var sky = scene.origin();
+        float r = scene.radius();
+        float life = Mth.clamp((float) (clock - scene.start()) / Math.max(1, scene.duration()), 0, 1);
+        if (clock >= scene.start() + scene.duration()) return;
+        boolean opening = scene.kind() == Heavenfall.APERTURE;
+        var center = opening ? sky : at;
+        var eye = origin.subtract(center);
+        begin(center);
+        var light = mesh(true);
+        var dark = mesh(false);
+        switch (scene.kind()) {
+            case Heavenfall.AIM -> {
+                float gain = phase == Heavenfall.Phase.HEAVEN_OPENING ? 1 - life : .48F;
+                groundRing(light, at, r, eye, .64F * gain);
+                glyph(light, .25F, r * .77F, time * .032F, 8, gain * .66F, false);
+                if (phase == Heavenfall.Phase.HEAVEN_OPENING) {
+                    var source = sky.subtract(at);
+                    var pulse = source.lerp(Vec3.ZERO, smooth(life * 1.65F));
+                    var tail = source.lerp(pulse, smooth(life * .94F));
+                    arc(light, dark, tail, pulse, eye, time, 3, .52, 19);
+                    smoke(at, r * 1.12F, r * .40F, gain * .67F, .58F, .4F);
+                }
+            }
+            case Heavenfall.APERTURE -> {
+                float open = switch (phase) {
+                    case HEAVEN_OPENING -> .12F + .88F * smooth(life);
+                    case COLLAPSING -> 1 - smooth(life);
+                    default -> 1;
+                };
+                float gathering = switch (phase) {
+                    case HEAVEN_OPENING -> .34F * life;
+                    case ENERGY_CONVERGENCE -> .34F + .66F * smooth(life);
+                    case DESCENT -> 1;
+                    case SUSTAINED -> .49F;
+                    default -> .42F * open;
+                };
+                HeavenfallGeometry.aperture(light, dark, eye, time, r * open, open, gathering, quality);
+                for (int cloud = 0; cloud < (quality >= 6 ? 12 : 6); cloud++) {
+                    var swirl = polar(0, (cloud % 4 - 1) * r * .14, 0, r * (.53 + .06 * cloud) * open,
+                            cloud * 2.399963 - time * .018);
+                    smoke(sky.add(swirl), r * .82F * open, r * .43F * open, .53F * open, .49F, cloud * .142F);
+                }
+            }
+            case Heavenfall.COLUMN -> {
+                var height = sky.subtract(at);
+                HeavenfallGeometry.column(light, dark, eye, height, r, time, life, phase, quality);
+                float fade = phase == Heavenfall.Phase.COLLAPSING ? 1 - life : 1;
+                float visibleHeight = phase == Heavenfall.Phase.DESCENT ? 1 - life : 0;
+                for (int i = 0; i < 10; i++) {
+                    float fraction = (i + 1) / 11F;
+                    if (fraction < visibleHeight) continue;
+                    var curl = polar(0, height.y * fraction, 0, r * .66, i * 2.399963 + time * .09);
+                    smoke(at.add(curl), r * (3.1F + i % 3 * .65F), r * 3.3F,
+                            .57F * fade, .76F, i * .13F);
+                }
+            }
+            case Heavenfall.IMPACT -> {
+                float alpha = (1 - life) * (1 - life);
+                float front = Math.max(2, r * (1 - (1 - life) * (1 - life)));
+                groundRing(light, at, front, eye, alpha);
+                for (int i = 0; i < 7; i++) {
+                    float latitude = (i - 3) / 4F;
+                    light.ring(latitude * front, front * (float) Math.sqrt(1 - latitude * latitude),
+                            .22F + front * .019F, time * .025 + i * .39, 96, 2, i % 2 == 0 ? HOT : ROSE, alpha * .67F);
+                }
+                for (int i = 0; i < (quality >= 6 ? 33 : 17); i++) {
+                    var rock = polar(0, 1 + Math.sin(life * Math.PI) * (3 + i % 11), 0, front * (.19 + .024 * i), i * 2.399963);
+                    float size = .3F + .17F * (i % 5);
+                    dark.diamond((float) rock.x, (float) rock.y, (float) rock.z, size, size * 3, i + time * .07, BLOOD, alpha);
+                }
+                for (int i = 0; i < (quality >= 6 ? 10 : 5); i++) {
+                    double angle = i * 2.399963;
+                    var base = polar(0, .55, 0, front * (.19 + .045 * (i % 9)), angle);
+                    var end = polar(0, front * (.16 + .14 * (i % 5)), 0, front * (.89 + .06 * (i % 3)), angle + .34);
+                    HeavenfallGeometry.lightning(light, dark, base, end, eye, time,
+                            Math.min(1.5F, front * .044F), alpha, i + 20);
+                }
+                smoke(at.add(0, 2, 0), front * 2, front * .67F, alpha * .73F, .62F, .32F);
+            }
+            case Heavenfall.GROUND -> {
+                groundRing(light, at, r, eye, (1 - life) * .39F);
+                if (at.distanceToSqr(origin) < 16000) {
+                    groundCurrents(light, at, eye, r, (1 - life) * .51F);
+                    for (int i = 0; i < 6; i++) {
+                        double angle = i * 2.399963 + time * .034;
+                        var source = polar(0, 0, 0, r * .91, angle);
+                        source = source.add(0, floor(at, source), 0);
+                        var sink = new Vec3(0, 3 + i * 1.1, 0);
+                        var bend = source.lerp(sink, .49).add(-Math.sin(angle) * r * .15, 2.1, Math.cos(angle) * r * .15);
+                        var stream = EnergyPath.spline(new Vec3[]{source, bend, sink}, 9);
+                        EnergyPath.render(light, stream, eye, .26F, (1 - life) * .49F, HOT, time * .41F, 1.1F, true);
+                    }
+                }
+            }
+            case Heavenfall.RESIDUE -> {
+                float gain = Math.min(1, (1 - life) * 5);
+                if (at.distanceToSqr(origin) < 16000) groundCurrents(light, at, eye, r, gain * .58F);
+                motes(light, quality >= 6 ? 90 : 36, r, r * .75F, time, .7F * gain, 0);
+                for (int i = 0; i < 6; i++) {
+                    var patch = polar(0, 1.2 + i * .37, 0, r * (.21 + i * .08), i * 2.399963);
+                    smoke(at.add(patch), r * .59F, r * .54F, gain * .48F, .49F, i * .17F);
+                    if (i % 2 == 0) HeavenfallGeometry.lightning(light, dark, patch.subtract(0, 1, 0),
+                            patch.add(2.8, 2.9, 1.2), eye, time, .12F, .56F * gain, i);
+                }
+            }
+            default -> { }
         }
         pose.popPose();
     }

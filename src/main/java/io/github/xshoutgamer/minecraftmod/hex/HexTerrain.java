@@ -27,11 +27,17 @@ import net.neoforged.neoforge.event.EventHooks;
 import net.neoforged.neoforge.event.level.BlockEvent;
 
 public final class HexTerrain extends SavedData {
-    private record Change(UUID owner, BlockState before, BlockState after, long expires, UUID event) {
+    private record Change(UUID owner, BlockState before, BlockState after, long expires, UUID event, boolean heavenfall, Change previous) {
+        Change(UUID owner, BlockState before, BlockState after, long expires, UUID event) {
+            this(owner, before, after, expires, event, false, null);
+        }
         Change(UUID owner, BlockState before, BlockState after, long expires) {
             this(owner, before, after, expires, null);
         }
+
+        Change expiresAt(long now) { return new Change(owner, before, after, now, event, heavenfall, previous); }
     }
+    private static final int HEAVENFALL_UPDATES = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
     private static final Factory<HexTerrain> FACTORY = new Factory<>(HexTerrain::new, HexTerrain::load);
     private final Map<BlockPos, Change> changes = new LinkedHashMap<>();
     private long reconstructionTick = Long.MIN_VALUE;
@@ -113,7 +119,7 @@ public final class HexTerrain extends SavedData {
             var entry = entries.next();
             if (!entry.getValue().owner.equals(owner)
                     || (radius > 0 && entry.getKey().distSqr(center) > radiusSquared)) continue;
-            count++;
+            count += entry.getValue().previous == null ? 1 : 2;
             if (confirm) entries.remove();
         }
         if (confirm && count > 0) setDirty();
@@ -170,23 +176,58 @@ public final class HexTerrain extends SavedData {
         return 1;
     }
 
+    int heavenfall(ServerPlayer player, BlockPos pos, UUID event, boolean excavate) {
+        var level = player.serverLevel();
+        if (!canRewrite(player) || !level.hasChunkAt(pos) || level.isOutsideBuildHeight(pos) || full()) return 0;
+        var before = level.getBlockState(pos);
+        if (before.isAir() || before.hasBlockEntity() || !before.getFluidState().isEmpty()) return 0;
+        var previous = changes.get(pos);
+        if (previous != null && (!excavate || previous.heavenfall || !previous.owner.equals(player.getUUID())
+                || !previous.after.equals(before))) return 0;
+        var after = excavate ? Blocks.AIR.defaultBlockState() : material(before, HexConfig.Rewrite.SCARLET);
+        if (after == null || before.equals(after)) return 0;
+        if (!excavate && after.is(io.github.xshoutgamer.minecraftmod.CelestialBlocks.SCARLET_STONE.get())
+                && Math.floorMod(Long.hashCode(pos.asLong() ^ event.getMostSignificantBits()), 23) == 0
+                && !level.isOutsideBuildHeight(pos.above()) && level.isEmptyBlock(pos.above())) {
+            after = io.github.xshoutgamer.minecraftmod.CelestialBlocks.HEAVENFALL_CRYSTAL.get().defaultBlockState();
+        }
+        var record = new Change(player.getUUID(), before, after, 0, event, true, previous);
+        changes.put(pos.immutable(), record);
+        if (!replace(player, pos, before, after, HEAVENFALL_UPDATES)) {
+            if (previous == null) changes.remove(pos, record);
+            else changes.replace(pos, record, previous);
+            return 0;
+        }
+        setDirty();
+        return 1;
+    }
+
     Map<UUID, Integer> sovereigntyEvents(UUID owner) {
         var events = new LinkedHashMap<UUID, Integer>();
-        for (var change : changes.values()) {
-            if (change.event != null && owner.equals(change.owner)) events.merge(change.event, 1, Integer::sum);
+        for (var current : changes.values()) {
+            for (var change = current; change != null; change = change.previous) {
+                if (change.event != null && owner.equals(change.owner)) events.merge(change.event, 1, Integer::sum);
+            }
         }
         return events;
     }
 
     Deque<BlockPos> expireEvent(UUID owner, UUID event, long now) {
         var result = new ArrayDeque<BlockPos>();
+        boolean deferred = false;
         for (var entry : changes.entrySet()) {
             var change = entry.getValue();
-            if (!owner.equals(change.owner) || !event.equals(change.event)) continue;
-            entry.setValue(new Change(change.owner, change.before, change.after, now, event));
-            result.addLast(entry.getKey());
+            if (!owner.equals(change.owner)) continue;
+            if (event.equals(change.event)) {
+                entry.setValue(change.expiresAt(now));
+                result.addLast(entry.getKey());
+            } else if (change.previous != null && event.equals(change.previous.event)) {
+                entry.setValue(new Change(change.owner, change.before, change.after, change.expires, change.event,
+                        change.heavenfall, change.previous.expiresAt(now)));
+                deferred = true;
+            }
         }
-        if (!result.isEmpty()) setDirty();
+        if (!result.isEmpty() || deferred) setDirty();
         return interleaveChunks(result);
     }
 
@@ -301,7 +342,10 @@ public final class HexTerrain extends SavedData {
         boolean planks = before.is(net.minecraft.tags.BlockTags.PLANKS);
         boolean foliage = before.is(net.minecraft.tags.BlockTags.LEAVES) || before.is(net.minecraft.tags.BlockTags.FLOWERS)
                 || before.is(Blocks.SHORT_GRASS) || before.is(Blocks.FERN) || before.is(Blocks.DEAD_BUSH)
-                || before.is(net.minecraft.tags.BlockTags.SAPLINGS);
+                || before.is(net.minecraft.tags.BlockTags.SAPLINGS) || before.is(Blocks.VINE)
+                || before.is(Blocks.CAVE_VINES) || before.is(Blocks.CAVE_VINES_PLANT)
+                || before.is(Blocks.TWISTING_VINES) || before.is(Blocks.TWISTING_VINES_PLANT)
+                || before.is(Blocks.WEEPING_VINES) || before.is(Blocks.WEEPING_VINES_PLANT);
         boolean masonry = before.is(Blocks.STONE_BRICKS) || before.is(Blocks.BRICKS) || before.is(Blocks.DEEPSLATE_BRICKS)
                 || before.is(Blocks.POLISHED_ANDESITE) || before.is(Blocks.QUARTZ_BLOCK) || before.is(Blocks.SANDSTONE);
         if (!stone && !dirt && !sand && !logs && !planks && !foliage && !masonry) return null;
@@ -337,12 +381,21 @@ public final class HexTerrain extends SavedData {
     }
 
     boolean restore(ServerPlayer player, BlockPos pos) {
+        return restore(player, pos, null);
+    }
+
+    boolean restore(ServerPlayer player, BlockPos pos, UUID event) {
         var change = changes.get(pos);
         var level = player.serverLevel();
-        if (change == null || !change.owner.equals(player.getUUID()) || !canRestore(player)
-                || !level.hasChunkAt(pos) || !level.getBlockState(pos).equals(change.after)) return false;
-        if (!replace(player, pos, change.after, change.before)) return false;
-        changes.remove(pos);
+        if (change == null || (event != null && !event.equals(change.event))
+                || !change.owner.equals(player.getUUID()) || !canRestore(player) || !level.hasChunkAt(pos) || !level.getBlockState(pos).equals(change.after)) return false;
+        return restoreTop(player, pos, change);
+    }
+
+    private boolean restoreTop(ServerPlayer player, BlockPos pos, Change change) {
+        if (!replace(player, pos, change.after, change.before, change.heavenfall ? HEAVENFALL_UPDATES : Block.UPDATE_ALL)) return false;
+        if (change.previous == null) changes.remove(pos);
+        else changes.put(pos, change.previous);
         setDirty();
         return true;
     }
@@ -363,10 +416,17 @@ public final class HexTerrain extends SavedData {
             else sovereign--;
             if (normal == 0 && sovereign == 0) break;
         }
-        for (var pos : positions) restore(player, pos);
+        for (var pos : positions) {
+            var change = changes.get(pos);
+            if (change != null && change.expires > 0 && change.expires <= now) restore(player, pos);
+        }
     }
 
     private static boolean replace(ServerPlayer player, BlockPos pos, BlockState before, BlockState after) {
+        return replace(player, pos, before, after, Block.UPDATE_ALL);
+    }
+
+    private static boolean replace(ServerPlayer player, BlockPos pos, BlockState before, BlockState after, int updates) {
         var level = player.serverLevel();
         if (level.isOutsideBuildHeight(pos) || !level.getWorldBorder().isWithinBounds(pos)
                 || (!after.isAir() && !level.isUnobstructed(after, pos, net.minecraft.world.phys.shapes.CollisionContext.empty()))
@@ -375,7 +435,7 @@ public final class HexTerrain extends SavedData {
                 || before.is(io.github.xshoutgamer.minecraftmod.nail.CelestialNail.IMPACT_IMMUNE)
                 || NeoForge.EVENT_BUS.post(new BlockEvent.BreakEvent(level, pos, before, player)).isCanceled()) return false;
         var snapshot = BlockSnapshot.create(level.dimension(), level, pos);
-        if (!level.setBlock(pos, after, Block.UPDATE_ALL)) return false;
+        if (!level.setBlock(pos, after, updates)) return false;
         if (EventHooks.onBlockPlace(player, snapshot, Direction.UP)) {
             snapshot.restore();
             return false;
@@ -387,27 +447,41 @@ public final class HexTerrain extends SavedData {
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         var entries = new ListTag();
         changes.forEach((pos, change) -> {
-            var entry = new CompoundTag();
+            var entry = saveChange(change);
             entry.putLong("Pos", pos.asLong());
-            entry.putUUID("Owner", change.owner);
-            entry.put("Before", NbtUtils.writeBlockState(change.before));
-            entry.put("After", NbtUtils.writeBlockState(change.after));
-            entry.putLong("Expires", change.expires);
-            if (change.event != null) entry.putUUID("Event", change.event);
             entries.add(entry);
         });
         tag.put("Changes", entries);
         return tag;
     }
 
+    private static CompoundTag saveChange(Change change) {
+        var entry = new CompoundTag();
+        entry.putUUID("Owner", change.owner);
+        entry.put("Before", NbtUtils.writeBlockState(change.before));
+        entry.put("After", NbtUtils.writeBlockState(change.after));
+        entry.putLong("Expires", change.expires);
+        if (change.event != null) entry.putUUID("Event", change.event);
+        if (change.heavenfall) entry.putBoolean("Heavenfall", true);
+        if (change.previous != null) entry.put("Previous", saveChange(change.previous));
+        return entry;
+    }
+
+    private static Change loadChange(CompoundTag entry, net.minecraft.core.HolderGetter<Block> blocks, boolean lowerLayer) {
+        if (!entry.hasUUID("Owner")) return null;
+        return new Change(entry.getUUID("Owner"), NbtUtils.readBlockState(blocks, entry.getCompound("Before")),
+                NbtUtils.readBlockState(blocks, entry.getCompound("After")), entry.getLong("Expires"),
+                entry.hasUUID("Event") ? entry.getUUID("Event") : null, entry.getBoolean("Heavenfall"),
+                lowerLayer ? null : loadChange(entry.getCompound("Previous"), blocks, true));
+    }
+
     private static HexTerrain load(CompoundTag tag, HolderLookup.Provider registries) {
         var data = new HexTerrain();
         var blocks = registries.lookupOrThrow(Registries.BLOCK);
         for (Tag item : tag.getList("Changes", Tag.TAG_COMPOUND)) {
-            if (!(item instanceof CompoundTag entry) || !entry.hasUUID("Owner")) continue;
-            data.changes.put(BlockPos.of(entry.getLong("Pos")), new Change(entry.getUUID("Owner"),
-                    NbtUtils.readBlockState(blocks, entry.getCompound("Before")),
-                    NbtUtils.readBlockState(blocks, entry.getCompound("After")), entry.getLong("Expires"), entry.hasUUID("Event") ? entry.getUUID("Event") : null));
+            if (!(item instanceof CompoundTag entry)) continue;
+            var change = loadChange(entry, blocks, false);
+            if (change != null) data.changes.put(BlockPos.of(entry.getLong("Pos")), change);
         }
         return data;
     }

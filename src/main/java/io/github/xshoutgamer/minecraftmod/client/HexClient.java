@@ -4,6 +4,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import io.github.xshoutgamer.minecraftmod.CelestiaConfig;
 import io.github.xshoutgamer.minecraftmod.MinecraftMod;
 import io.github.xshoutgamer.minecraftmod.hex.HexConfig;
+import io.github.xshoutgamer.minecraftmod.hex.Heavenfall;
 import io.github.xshoutgamer.minecraftmod.hex.HexNetwork;
 import io.github.xshoutgamer.minecraftmod.hex.HexSpell;
 import io.github.xshoutgamer.minecraftmod.hex.PersonalMagic;
@@ -124,7 +125,8 @@ public final class HexClient {
             long instance = scene.kind() == HexNetwork.RUNE_FX || scene.kind() == HexNetwork.ORB_FX || scene.kind() == PersonalMagic.MEMORY_FX
                     || scene.kind() == HexNetwork.RECONSTRUCTION_FX || scene.kind() == ScarletSovereignty.CAPTURE
                     || scene.kind() == ScarletSovereignty.FORMATION || scene.kind() == ScarletSovereignty.RELEASE_WAVE
-                    || scene.kind() == ScarletSovereignty.TERRAIN_FX || scene.kind() == ScarletSovereignty.DOMINION_FX ? scene.start() ^ scene.target().hashCode() : 0;
+                    || scene.kind() == ScarletSovereignty.TERRAIN_FX || scene.kind() == ScarletSovereignty.DOMINION_FX
+                    || scene.kind() > Heavenfall.AIM || scene.kind() == Heavenfall.AIM && scene.variant() == Heavenfall.Phase.HEAVEN_OPENING.ordinal() ? scene.start() ^ scene.target().hashCode() : 0;
             int variant = scene.kind() == ScarletSovereignty.PRESENCE ? 0 : scene.variant();
             if (scene.kind() == 6 + HexSpell.REWRITE.ordinal() && scene.variant() == HexNetwork.REWRITE_FADE) {
                 variant = HexNetwork.REWRITE_WAVE;
@@ -246,6 +248,17 @@ public final class HexClient {
         };
     }
 
+    static boolean heavenfallAvailable() {
+        var game = Minecraft.getInstance();
+        return sovereigntyReigning() && Heavenfall.enabled()
+                && game.getConnection() != null && NetworkRegistry.hasChannel(game.getConnection(), HexNetwork.Input.TYPE.id());
+    }
+
+    @SubscribeEvent
+    public static void heavenfallUse(net.neoforged.neoforge.client.event.InputEvent.InteractionKeyMappingTriggered event) {
+        MagicKeys.heavenfall(event);
+    }
+
     static boolean sovereigntyReigning() {
         var scene = sovereignty();
         return scene != null && ScarletSovereignty.Phase.values()[scene.variant()].reigning();
@@ -278,7 +291,7 @@ public final class HexClient {
         if (!HexConfig.SOVEREIGN_INVERSION.get() || CelestiaConfig.REDUCED_FLASH.get()) return 0;
         float value = 0;
         for (var scene : EFFECTS.values()) {
-            if (scene.kind() != ScarletSovereignty.RELEASE_WAVE) continue;
+            if (scene.kind() != ScarletSovereignty.RELEASE_WAVE && scene.kind() != Heavenfall.IMPACT) continue;
             double age = now - scene.start();
             if (age < 0 || age > 7) continue;
             float intensity = Mth.clamp(1 - (float) eye.distanceTo(scene.target()) / scene.radius(), 0, 1);
@@ -297,6 +310,12 @@ public final class HexClient {
             intensity = Math.max(intensity, inside * (scene.kind() == HexNetwork.ENHANCED ? 1 : .75F));
         }
         for (var scene : EFFECTS.values()) {
+            if (scene.kind() == Heavenfall.COLUMN) {
+                float inside = Mth.clamp(1 - (float) camera.subtract(scene.target()).horizontalDistance() / 75, 0, 1);
+                float fade = scene.variant() == Heavenfall.Phase.COLLAPSING.ordinal()
+                        ? Mth.clamp((float) (scene.start() + scene.duration() - now) / scene.duration(), 0, 1) : 1;
+                intensity = Math.max(intensity, .66F * inside * fade);
+            }
             if (scene.kind() == ScarletSovereignty.PRESENCE) {
                 float strength = (float) Math.clamp(scene.origin().y - scene.target().y, 0, 1);
                 float inside = Mth.clamp((scene.radius() - (float) camera.distanceTo(scene.target())) / 90, 0, 1);
@@ -323,7 +342,7 @@ public final class HexClient {
         var ultimate = sovereignty();
         if (ultimate != null) {
             float strength = (float) Math.clamp(ultimate.origin().y - ultimate.target().y, 0, 1);
-            HexRenderer.hands(event, HexSpell.ASCENSION, .3F + strength * .7F);
+            HexRenderer.hands(event, HexSpell.ASCENSION, MagicKeys.heavenfallCharging() ? 1.4F : .3F + strength * .7F);
         } else if (scene != null && scene.kind() != HexNetwork.COLLAPSING) {
             HexRenderer.hands(event, castingSpell, chargeBlend);
         }

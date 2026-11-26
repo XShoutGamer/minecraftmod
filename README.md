@@ -80,6 +80,14 @@ Reality Rewrite corruption spreads with its visual wave. At 20 TPS, a quick cast
 - Enable `cinematicCamera` in the client config for a third-person pullback during the charge. The mantle, throne, optional release inversion, and `transformationVolume` are separate client settings. The full charge uses a 10-second edit of the supplied 0:35–0:59 excerpt from *Scarlet Witch Sound Effects (WandaVision)*, credited to jnmks in the source file. Quick mode uses the original six-second score.
 - Darkhold field actions default to **I**. If your Controls profile assigns them to **U**, rebind **Darkhold spell action** to **I**.
 
+### The Scarlet Decree — Heavenfall
+
+**Right-click** while Scarlet Sovereignty is active to mark your target. Release immediately for a standard strike or hold for 2.5 seconds for full charge. Hold **Left Alt** to use items and interact normally. The bypass is rebindable in Controls. Heavenfall supports blocks, water surfaces, and eligible mobs along your line of sight.
+
+The standard strike has a 12-block-wide beam, a roughly 30-block-wide crater up to 20 blocks deep, and a 45-block corruption radius. Full charge reaches 25, 60, 40, and 80 blocks respectively, with a six-second beam instead of three. The terrain queue works in batches, and larger edits may continue into the aftermath. `[heavenfall]` in the Hex server config controls range, scale, timing, damage, and simultaneous strikes. Heavenfall shares the existing terrain journal limit.
+
+Terrain changes require the existing Reality Rewrite permissions. Craters, crystal deposits, and corruption are journaled per strike and persist after Sovereignty ends. Use Genesis for an area or `/hexterrain events` and `/hexterrain restore-event <id>` for an entire strike. The journal skips unloaded chunks, fluids, block entities, and protected blocks. Heavenfall affects passive and neutral mobs as well as hostile ones; tamed mobs, allies, and players are protected.
+
 Genesis uses `genesisSpeed` in the Hex server config. **Divine** (the default) restores up to 1,024 positions per tick per dimension, **Rapid** up to 384, and **Cinematic** up to 64. Work is interleaved across chunks while local reconstruction effects play independently. Genesis needs valid journal entries and only restores loaded blocks still matching the recorded replacement. Past changes made permanent through `/hexterrain keep` stay permanent.
 
 ## Configuration

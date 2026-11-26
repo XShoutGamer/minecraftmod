@@ -38,6 +38,7 @@ public final class HexConfig {
     public enum Target { LOOK, STATIONARY, FOLLOW, AURA }
 
     public static final ModConfigSpec SERVER, CLIENT;
+    static final HeavenfallConfig HEAVENFALL;
     public static final java.util.List<ModConfigSpec.EnumValue<HexSpell>> SHORTCUTS;
     public static final ModConfigSpec.EnumValue<HandPreset> HAND_PRESET;
     public static final ModConfigSpec.DoubleValue HAND_X, HAND_Y, HAND_SPACING, HAND_SCALE, HAND_PARTICLES, HAND_SMOKE,
@@ -153,6 +154,7 @@ public final class HexConfig {
         SOVEREIGN_SPELL_RECOVERY = server.defineInRange("spellCooldownMultiplier", .65, .15, 1);
         SOVEREIGN_DAMAGE = server.defineInRange("hostileDamage", 16D, 0, 100);
         server.pop();
+        HEAVENFALL = new HeavenfallConfig(server);
         GENESIS_SPEED = server.defineEnum("genesisSpeed", GenesisSpeed.DIVINE);
         GENESIS_RADIUS = server.defineInRange("genesisRadius", 38, 4, 150);
         DEBUG = server.define("abilityDebug", false);

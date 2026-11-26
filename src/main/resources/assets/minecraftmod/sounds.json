@@ -1,4 +1,12 @@
 {
+  "heavenfall_open": {
+    "subtitle": "subtitles.minecraftmod.heavenfall_open",
+    "sounds": [{"name": "minecraftmod:heavenfall_open", "attenuation_distance": 240}]
+  },
+  "heavenfall_descent": {
+    "subtitle": "subtitles.minecraftmod.heavenfall_descent",
+    "sounds": [{"name": "minecraftmod:heavenfall_descent", "attenuation_distance": 300}]
+  },
   "sovereign_transformation": {
     "subtitle": "subtitles.minecraftmod.sovereign_transformation",
     "sounds": [{"name": "minecraftmod:sovereign_transformation", "stream": true, "attenuation_distance": 28}]

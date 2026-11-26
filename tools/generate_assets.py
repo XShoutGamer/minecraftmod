@@ -81,6 +81,15 @@ def signal(name, duration, seed):
             age = np.maximum(t-start, 0)
             wave += (t >= start) * np.exp(-17*age) * (grit*noise + .18*soft_noise)
         wave *= .68
+    elif name == "heavenfall_open":
+        sweep = np.sin(2 * np.pi * (43 * t + 9.5 * t * u))
+        vortex = np.sin(2 * np.pi * (103 * t + 7 * np.sin(t * 3.9)))
+        shimmer = sum(np.sin(2 * np.pi * f * t) for f in (223, 337, 475, 612)) / 4
+        wave = (np.sin(np.pi * u) ** .5) * (.33 * sweep + .19 * vortex + u * (.26 * shimmer + .39 * soft_noise))
+    elif name == "heavenfall_descent":
+        rip = np.sin(2 * np.pi * (66 * t + 39 * (1 - np.exp(-3 * t))))
+        wave = np.sin(np.pi * u) ** .7 * (.36 * rip + .38 * soft_noise + .13 * chord)
+        wave *= .82 + .18 * np.sin(t * 41)
     elif name == "sovereign_quick":
         cinematic = u * 24
         warmth = .44 + .28 * np.clip((cinematic - 4) / 6, 0, 1)
@@ -127,7 +136,8 @@ def write_audio(selected=()):
     cues = {"summon": 1.7, "gather": 1.1, "charge": 5.78, "descent": 0.82, "impact": 3.1,
             "shockwave": 1.2, "fracture": 0.9, "ambient": 3.8, "dissolve": 1.8, "debris": 1.75, "rumble": 6.4, "release": 2.25,
             "divine_arc": 2.4, "crimson_arc": 1.55, "golden_flow": 2.3, "residual_arc": 1.32, "sovereign_current": 2.2, "sovereign_crown": 2.8,
-            "sovereign_release": 3.4, "sovereign_quick": 6}
+            "sovereign_release": 3.4, "sovereign_quick": 6,
+            "heavenfall_open": 3.3, "heavenfall_descent": 1.16}
     for i, (name, duration) in enumerate(cues.items()):
         if selected and name not in selected:
             continue

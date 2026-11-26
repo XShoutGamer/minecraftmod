@@ -23,6 +23,9 @@ public final class CelestialBlocks {
             BlockBehaviour.Properties.of().strength(2.8F, 7).sound(SoundType.DEEPSLATE)
                     .lightLevel(state -> 4).noLootTable()));
 
+    public static final DeferredBlock<Block> HEAVENFALL_CRYSTAL = BLOCKS.register("heavenfall_crystal", () -> new Block(
+            BlockBehaviour.Properties.of().strength(1.6F).sound(SoundType.AMETHYST).lightLevel(state -> 11).noLootTable()));
+
     public static final DeferredBlock<Block> ARCANE_PLATFORM = BLOCKS.register("arcane_platform", () ->
             new io.github.xshoutgamer.minecraftmod.hex.ArcanePlatform(BlockBehaviour.Properties.of()
                     .strength(1.4F).lightLevel(state -> 8).sound(SoundType.AMETHYST).noLootTable()));

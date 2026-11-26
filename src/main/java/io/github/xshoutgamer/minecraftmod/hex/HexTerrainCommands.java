@@ -34,7 +34,7 @@ public final class HexTerrainCommands {
     private static int events(CommandSourceStack source) throws CommandSyntaxException {
         var player = source.getPlayerOrException();
         var events = HexTerrain.get(player.serverLevel()).sovereigntyEvents(player.getUUID());
-        if (events.isEmpty()) source.sendSuccess(() -> Component.literal("No Sovereignty events in this dimension."), false);
+        if (events.isEmpty()) source.sendSuccess(() -> Component.literal("No journaled Sovereignty or Heavenfall events in this dimension."), false);
         int shown = 0;
         for (var entry : events.entrySet()) {
             if (shown++ >= 20) break;
@@ -49,8 +49,9 @@ public final class HexTerrainCommands {
 
     private static int restoreEvent(CommandSourceStack source, UUID id) throws CommandSyntaxException {
         var player = source.getPlayerOrException();
-        int count = HexTerrain.get(player.serverLevel()).expireEvent(player.getUUID(), id,
-                Math.max(1, player.level().getGameTime())).size();
+        var journal = HexTerrain.get(player.serverLevel());
+        int count = journal.sovereigntyEvents(player.getUUID()).getOrDefault(id, 0);
+        if (count > 0) journal.expireEvent(player.getUUID(), id, Math.max(1, player.level().getGameTime()));
         if (count > 0) source.sendSuccess(() -> Component.literal("Scheduled " + count + " undo records for restoration as chunks are available."), false);
         else source.sendFailure(Component.literal("You have no records for that event in this dimension."));
         return count;

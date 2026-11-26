@@ -32,6 +32,8 @@ public final class HexNetwork {
                 if (packet.action() >= PersonalMagic.QUICK && packet.action() <= PersonalMagic.LIBRARY_SELECT) PersonalMagic.input(player, packet);
                 else if (packet.action() >= ScarletSovereignty.PRESS && packet.action() <= ScarletSovereignty.DISMISS) {
                     ScarletSovereignty.input(player, packet.action());
+                } else if (packet.action() >= Heavenfall.PRESS && packet.action() <= Heavenfall.CANCEL) {
+                    Heavenfall.input(player, packet.action());
                 } else HexDomains.input(player, packet);
             }
         });
