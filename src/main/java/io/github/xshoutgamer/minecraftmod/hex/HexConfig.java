@@ -25,7 +25,8 @@ public final class HexConfig {
     public static final ModConfigSpec.BooleanValue HAND_MASK, HAND_ANIMATION, HAND_PERIPHERAL;
     public static final ModConfigSpec.EnumValue<Target> TARGET;
     public static final ModConfigSpec.IntValue RADIUS, ULTRA_RADIUS, EXPANSION, COLLAPSE, LIFE, COOLDOWN_PERCENT, TELEKINESIS_LIMIT,
-            TELEKINESIS_RANGE, EDITS, RECORDS, TEMPORAL_TICKS, RUNE_RADIUS;
+            TELEKINESIS_RANGE, EDITS, TEMPORAL_TICKS, RUNE_RADIUS;
+    private static final ModConfigSpec.IntValue RECORD_LIMIT, LEGACY_RECORD_LIMIT;
     public static final ModConfigSpec.IntValue DISINTEGRATION_RANGE, DISINTEGRATION_AREA;
     public static final ModConfigSpec.DoubleValue DISINTEGRATION_DAMAGE;
     public static final ModConfigSpec.BooleanValue EDIT, OWNER_REWRITE, RECORD_NAIL, FLIGHT, GAMEPLAY, DEMO_ORBS;
@@ -70,7 +71,10 @@ public final class HexConfig {
         REWRITE_SECONDS = server.comment("Zero leaves changes until Genesis restores them.").defineInRange("rewriteTemporarySeconds", 0, 0, 3600);
         RECORD_NAIL = server.comment("Record future Celestial Nail excavation for Genesis, within the journal limit.").define("recordNailExcavation", false);
         EDITS = server.defineInRange("terrainEditsPerTick", 24, 1, 128);
-        RECORDS = server.defineInRange("restorationRecordsPerDimension", 32768, 64, 300000);
+        RECORD_LIMIT = server.comment("Undo records per dimension. Zero uses 262144 or a customized legacy limit.")
+                .defineInRange("terrainJournalLimit", 0, 0, 300000);
+        LEGACY_RECORD_LIMIT = server.comment("Legacy journal limit. Set terrainJournalLimit to override it.")
+                .defineInRange("restorationRecordsPerDimension", 32768, 64, 300000);
         FLIGHT = server.define("ascensionFlight", true);
         RESISTANCE = server.defineInRange("ascensionDamageResistance", .20, 0, .8);
         GAMEPLAY = server.define("gameplayEffects", true);
@@ -165,6 +169,13 @@ public final class HexConfig {
         if (configured > 0) return Math.max(6, configured);
         int legacy = LEGACY_REWRITE_RADIUS.get();
         return legacy == 13 ? 60 : Math.max(6, legacy);
+    }
+
+    static int restorationRecordLimit() {
+        int configured = RECORD_LIMIT.get();
+        if (configured > 0) return Math.max(64, configured);
+        int legacy = LEGACY_RECORD_LIMIT.get();
+        return legacy == 8192 || legacy == 32768 ? 262144 : legacy;
     }
 
     private HexConfig() {}

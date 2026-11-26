@@ -59,7 +59,7 @@ public final class HexTerrain extends SavedData {
         if (!HexConfig.RECORD_NAIL.get() || !player.hasPermissions(2) || before.hasBlockEntity()
                 || !before.getFluidState().isEmpty() || !level.isEmptyBlock(pos)) return;
         var journal = get(level);
-        if (journal.changes.size() >= HexConfig.RECORDS.get() || journal.changes.containsKey(pos)) return;
+        if (journal.full() || journal.changes.containsKey(pos)) return;
         journal.changes.put(pos.immutable(), new Change(player.getUUID(), before, Blocks.AIR.defaultBlockState(), 0));
         journal.setDirty();
     }
@@ -68,7 +68,7 @@ public final class HexTerrain extends SavedData {
         var level = player.serverLevel();
         int edits = 0;
         for (var column : patch(BlockPos.containing(impact), (int) Math.min(7, radius * .43))) {
-            if (edits >= HexConfig.EDITS.get() || changes.size() >= HexConfig.RECORDS.get()) break;
+            if (edits >= HexConfig.EDITS.get() || full()) break;
             if (!level.hasChunkAt(column)) continue;
             for (int dy = 2; dy >= -3; dy--) {
                 var pos = column.above(dy);
@@ -98,7 +98,7 @@ public final class HexTerrain extends SavedData {
         return new ArrayDeque<>(positions);
     }
 
-    boolean full() { return changes.size() >= HexConfig.RECORDS.get(); }
+    boolean full() { return changes.size() >= HexConfig.restorationRecordLimit(); }
 
     static Deque<BlockPos> volume(BlockPos center, int radius, HexConfig.Volume shape) {
         if (shape == HexConfig.Volume.TERRAIN) return patch(center, radius);
@@ -130,7 +130,7 @@ public final class HexTerrain extends SavedData {
     int rewriteBlock(ServerPlayer player, BlockPos pos) {
         var level = player.serverLevel();
         if (!canRewrite(player) || !level.hasChunkAt(pos) || level.isOutsideBuildHeight(pos)
-                || changes.containsKey(pos) || changes.size() >= HexConfig.RECORDS.get()) return 0;
+                || changes.containsKey(pos) || full()) return 0;
         var before = level.getBlockState(pos);
         var after = material(before);
         if (after == null || before.equals(after) || !replace(player, pos, before, after)) return 0;
@@ -143,7 +143,7 @@ public final class HexTerrain extends SavedData {
     boolean disintegrate(ServerPlayer player, BlockPos pos) {
         var level = player.serverLevel();
         if (!canRewrite(player) || !level.hasChunkAt(pos) || level.isOutsideBuildHeight(pos)
-                || changes.size() >= HexConfig.RECORDS.get() || changes.containsKey(pos)) return false;
+                || full() || changes.containsKey(pos)) return false;
         var before = level.getBlockState(pos);
         if (before.isAir() || !before.blocksMotion() || before.is(io.github.xshoutgamer.minecraftmod.CelestialBlocks.SCARLET_STONE.get())
                 || before.is(Blocks.DIAMOND_BLOCK) || before.is(Blocks.NETHERITE_BLOCK)) return false;
@@ -175,7 +175,7 @@ public final class HexTerrain extends SavedData {
     int rewrite(ServerPlayer player, BlockPos column) {
         var level = player.serverLevel();
         if (!canRewrite(player) || !level.hasChunkAt(column)
-                || changes.size() >= HexConfig.RECORDS.get()) return 0;
+                || full()) return 0;
         int surface = Math.min(level.getMaxBuildHeight() - 1, column.getY() + 10);
         int minY = Math.max(level.getMinBuildHeight(), column.getY() - 13);
         while (surface >= minY && level.isEmptyBlock(column.atY(surface))) surface--;
@@ -183,7 +183,7 @@ public final class HexTerrain extends SavedData {
         int changed = 0;
         long duration = HexConfig.REWRITE_SECONDS.get() * 20L;
         long expires = duration > 0 ? level.getGameTime() + duration : 0;
-        for (int step = 0; step < HexConfig.REWRITE_DEPTH.get() && changes.size() < HexConfig.RECORDS.get(); step++) {
+        for (int step = 0; step < HexConfig.REWRITE_DEPTH.get() && !full(); step++) {
             var pos = column.atY(surface - step);
             if (level.isOutsideBuildHeight(pos) || changes.containsKey(pos)) break;
             var before = level.getBlockState(pos);

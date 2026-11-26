@@ -2,7 +2,7 @@ package io.github.xshoutgamer.minecraftmod.hex;
 
 public enum HexSpell {
     TELEKINESIS("Absolute Telekinesis", "Hold to lift a creature or loose item along your aim.", 24, true),
-    REWRITE("Reality Rewrite", "Transform a patch of terrain. Hold to grow the patch.", 65, true),
+    REWRITE("Reality Rewrite", "Transform a patch of terrain. Hold to grow the patch.", 60, true),
     ORB("Chaos Energy Orb", "Charge a turbulent orb and release it along your aim.", 24, true),
     BARRIER("Chaos Barrier", "Hold to catch incoming projectiles in a protective dome.", 24, true),
     ASCENSION("Scarlet Ascension", "Toggle flight and knockback resistance.", 14, false),
