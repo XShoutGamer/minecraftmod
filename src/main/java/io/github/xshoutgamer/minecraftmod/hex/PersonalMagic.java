@@ -135,8 +135,8 @@ public final class PersonalMagic {
 
     private static void startDissolve(ServerPlayer player, State state, long now) {
         var eye = player.getEyePosition();
-        var blockHit = HexAbilities.trace(player, HexConfig.DISINTEGRATION_RANGE.get());
-        var end = blockHit == null ? eye.add(player.getLookAngle().scale(HexConfig.DISINTEGRATION_RANGE.get())) : blockHit.getLocation();
+        var blockHit = HexAbilities.trace(player, HexConfig.DISINTEGRATION_RANGE.get() * ScarletSovereignty.reach(player));
+        var end = blockHit == null ? eye.add(player.getLookAngle().scale(HexConfig.DISINTEGRATION_RANGE.get() * ScarletSovereignty.reach(player))) : blockHit.getLocation();
         var hit = ProjectileUtil.getEntityHitResult(player.level(), player, eye, end, new AABB(eye, end).inflate(1),
                 entity -> entity instanceof Mob && allowed(player, entity));
         state.entity = hit == null ? null : hit.getEntity();
@@ -331,7 +331,7 @@ public final class PersonalMagic {
     private static void finishDissolve(ServerPlayer player, State state, long now) {
         var eye = player.getEyePosition();
         var end = state.entity == null ? state.focus : state.entity.getBoundingBox().getCenter();
-        if (eye.distanceTo(end) > HexConfig.DISINTEGRATION_RANGE.get() + 1) return;
+        if (eye.distanceTo(end) > HexConfig.DISINTEGRATION_RANGE.get() * ScarletSovereignty.reach(player) + 1) return;
         if (!player.serverLevel().hasChunkAt(BlockPos.containing(end))) return;
         var hit = player.level().clip(new net.minecraft.world.level.ClipContext(eye, end,
                 net.minecraft.world.level.ClipContext.Block.COLLIDER, net.minecraft.world.level.ClipContext.Fluid.NONE, player));

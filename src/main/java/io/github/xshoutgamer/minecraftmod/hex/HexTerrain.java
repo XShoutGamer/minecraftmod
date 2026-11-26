@@ -27,7 +27,11 @@ import net.neoforged.neoforge.event.EventHooks;
 import net.neoforged.neoforge.event.level.BlockEvent;
 
 public final class HexTerrain extends SavedData {
-    private record Change(UUID owner, BlockState before, BlockState after, long expires) {}
+    private record Change(UUID owner, BlockState before, BlockState after, long expires, UUID event) {
+        Change(UUID owner, BlockState before, BlockState after, long expires) {
+            this(owner, before, after, expires, null);
+        }
+    }
     private static final Factory<HexTerrain> FACTORY = new Factory<>(HexTerrain::new, HexTerrain::load);
     private final Map<BlockPos, Change> changes = new LinkedHashMap<>();
     private long reconstructionTick = Long.MIN_VALUE;
@@ -144,16 +148,46 @@ public final class HexTerrain extends SavedData {
     }
 
     int rewriteBlock(ServerPlayer player, BlockPos pos) {
+        long duration = HexConfig.REWRITE_SECONDS.get() * 20L;
+        long expires = duration == 0 ? 0 : player.level().getGameTime() + duration;
+        return rewriteBlock(player, pos, HexConfig.REWRITE.get(), null, expires);
+    }
+
+    int rewriteBlock(ServerPlayer player, BlockPos pos, HexConfig.Rewrite preset, UUID event, long expires) {
         var level = player.serverLevel();
         if (!canRewrite(player) || !level.hasChunkAt(pos) || level.isOutsideBuildHeight(pos)
                 || changes.containsKey(pos) || full()) return 0;
         var before = level.getBlockState(pos);
-        var after = material(before);
-        if (after == null || before.equals(after) || !replace(player, pos, before, after)) return 0;
-        long duration = HexConfig.REWRITE_SECONDS.get() * 20L;
-        changes.put(pos, new Change(player.getUUID(), before, after, duration == 0 ? 0 : level.getGameTime() + duration));
+        var after = material(before, preset);
+        if (after == null || before.equals(after)) return 0;
+        var record = new Change(player.getUUID(), before, after, expires, event);
+        changes.put(pos, record);
+        if (!replace(player, pos, before, after)) {
+            changes.remove(pos, record);
+            return 0;
+        }
         setDirty();
         return 1;
+    }
+
+    Map<UUID, Integer> sovereigntyEvents(UUID owner) {
+        var events = new LinkedHashMap<UUID, Integer>();
+        for (var change : changes.values()) {
+            if (change.event != null && owner.equals(change.owner)) events.merge(change.event, 1, Integer::sum);
+        }
+        return events;
+    }
+
+    Deque<BlockPos> expireEvent(UUID owner, UUID event, long now) {
+        var result = new ArrayDeque<BlockPos>();
+        for (var entry : changes.entrySet()) {
+            var change = entry.getValue();
+            if (!owner.equals(change.owner) || !event.equals(change.event)) continue;
+            entry.setValue(new Change(change.owner, change.before, change.after, now, event));
+            result.addLast(entry.getKey());
+        }
+        if (!result.isEmpty()) setDirty();
+        return interleaveChunks(result);
     }
 
     boolean disintegrate(ServerPlayer player, BlockPos pos) {
@@ -178,8 +212,12 @@ public final class HexTerrain extends SavedData {
     }
 
     Deque<BlockPos> reconstruction(UUID owner, BlockPos center, double radius) {
+        return interleaveChunks(restoration(owner, center, radius));
+    }
+
+    private static Deque<BlockPos> interleaveChunks(Iterable<BlockPos> work) {
         var chunks = new LinkedHashMap<Long, Deque<BlockPos>>();
-        for (var pos : restoration(owner, center, radius)) {
+        for (var pos : work) {
             long chunk = net.minecraft.world.level.ChunkPos.asLong(pos);
             chunks.computeIfAbsent(chunk, ignored -> new ArrayDeque<>()).add(pos);
         }
@@ -196,9 +234,13 @@ public final class HexTerrain extends SavedData {
     }
 
     int claimReconstructionBudget(long now) {
+        return claimReconstructionBudget(now, 1);
+    }
+
+    int claimReconstructionBudget(long now, double multiplier) {
         if (now == reconstructionTick) return 0;
         reconstructionTick = now;
-        return genesisBudget();
+        return (int) (genesisBudget() * multiplier);
     }
 
     static int genesisBudget() {
@@ -247,6 +289,10 @@ public final class HexTerrain extends SavedData {
     }
 
     private static BlockState material(BlockState before) {
+        return material(before, HexConfig.REWRITE.get());
+    }
+
+    private static BlockState material(BlockState before, HexConfig.Rewrite preset) {
         boolean stone = before.is(Blocks.STONE) || before.is(Blocks.ANDESITE) || before.is(Blocks.COBBLESTONE)
                 || before.is(Blocks.DEEPSLATE) || before.is(Blocks.GRANITE) || before.is(Blocks.DIORITE);
         boolean dirt = before.is(net.minecraft.tags.BlockTags.DIRT);
@@ -259,7 +305,7 @@ public final class HexTerrain extends SavedData {
         boolean masonry = before.is(Blocks.STONE_BRICKS) || before.is(Blocks.BRICKS) || before.is(Blocks.DEEPSLATE_BRICKS)
                 || before.is(Blocks.POLISHED_ANDESITE) || before.is(Blocks.QUARTZ_BLOCK) || before.is(Blocks.SANDSTONE);
         if (!stone && !dirt && !sand && !logs && !planks && !foliage && !masonry) return null;
-        if (HexConfig.REWRITE.get() == HexConfig.Rewrite.SCARLET) {
+        if (preset == HexConfig.Rewrite.SCARLET) {
             if (logs) return io.github.xshoutgamer.minecraftmod.CelestialBlocks.BLIGHT_LOG.get().defaultBlockState().setValue(
                     net.minecraft.world.level.block.RotatedPillarBlock.AXIS,
                     before.hasProperty(net.minecraft.world.level.block.RotatedPillarBlock.AXIS)
@@ -271,7 +317,7 @@ public final class HexTerrain extends SavedData {
                     : dirt ? io.github.xshoutgamer.minecraftmod.CelestialBlocks.BLIGHT_SOIL.get()
                     : io.github.xshoutgamer.minecraftmod.CelestialBlocks.BLIGHT_SAND.get()).defaultBlockState();
         }
-        var block = switch (HexConfig.REWRITE.get()) {
+        var block = switch (preset) {
             case SCARLET -> stone ? Blocks.AMETHYST_BLOCK : dirt ? Blocks.OBSIDIAN : Blocks.RED_STAINED_GLASS;
             case CRYSTALLINE -> stone ? Blocks.AMETHYST_BLOCK : Blocks.TINTED_GLASS;
             case CELESTIAL -> stone ? Blocks.QUARTZ_BLOCK : Blocks.CALCITE;
@@ -303,11 +349,20 @@ public final class HexTerrain extends SavedData {
 
     void restoreExpired(ServerPlayer player) {
         long now = player.level().getGameTime();
-        var positions = changes.entrySet().stream()
-                .filter(entry -> entry.getValue().expires > 0 && entry.getValue().expires <= now
-                        && entry.getValue().owner.equals(player.getUUID()) && player.serverLevel().hasChunkAt(entry.getKey())
-                        && player.level().getBlockState(entry.getKey()).equals(entry.getValue().after))
-                .map(Map.Entry::getKey).limit(HexConfig.EDITS.get()).toList();
+        int normal = HexConfig.EDITS.get();
+        int sovereign = Math.min(384, genesisBudget());
+        var positions = new ArrayList<BlockPos>();
+        for (var entry : changes.entrySet()) {
+            var change = entry.getValue();
+            var pos = entry.getKey();
+            if (change.expires == 0 || change.expires > now || !change.owner.equals(player.getUUID())
+                    || (change.event == null ? normal == 0 : sovereign == 0)
+                    || !player.serverLevel().hasChunkAt(pos) || !player.level().getBlockState(pos).equals(change.after)) continue;
+            positions.add(pos);
+            if (change.event == null) normal--;
+            else sovereign--;
+            if (normal == 0 && sovereign == 0) break;
+        }
         for (var pos : positions) restore(player, pos);
     }
 
@@ -338,6 +393,7 @@ public final class HexTerrain extends SavedData {
             entry.put("Before", NbtUtils.writeBlockState(change.before));
             entry.put("After", NbtUtils.writeBlockState(change.after));
             entry.putLong("Expires", change.expires);
+            if (change.event != null) entry.putUUID("Event", change.event);
             entries.add(entry);
         });
         tag.put("Changes", entries);
@@ -351,7 +407,7 @@ public final class HexTerrain extends SavedData {
             if (!(item instanceof CompoundTag entry) || !entry.hasUUID("Owner")) continue;
             data.changes.put(BlockPos.of(entry.getLong("Pos")), new Change(entry.getUUID("Owner"),
                     NbtUtils.readBlockState(blocks, entry.getCompound("Before")),
-                    NbtUtils.readBlockState(blocks, entry.getCompound("After")), entry.getLong("Expires")));
+                    NbtUtils.readBlockState(blocks, entry.getCompound("After")), entry.getLong("Expires"), entry.hasUUID("Event") ? entry.getUUID("Event") : null));
         }
         return data;
     }

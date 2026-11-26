@@ -178,7 +178,7 @@ final class HexAbilities {
             case TEMPORAL, GRAVITY -> {
                 if (spell == HexSpell.GRAVITY && player.isShiftKeyDown()) gravityMode = (gravityMode + 1) % 4;
                 int ticks = spell == HexSpell.TEMPORAL ? HexConfig.TEMPORAL_TICKS.get() : 110;
-                float radius = (float) ((spell == HexSpell.TEMPORAL ? HexConfig.TEMPORAL_RADIUS.get() : HexConfig.GRAVITY_RADIUS.get()) * domain.scale());
+                float radius = (float) ((spell == HexSpell.TEMPORAL ? HexConfig.TEMPORAL_RADIUS.get() : HexConfig.GRAVITY_RADIUS.get()) * domain.scale() * ScarletSovereignty.reach(player));
                 fields.removeIf(field -> field.spell == spell);
                 fields.add(new Field(spell, target, now + ticks, gravityMode, radius));
                 scene(player, spell, gravityMode, eye, target, now, ticks, radius);
@@ -198,7 +198,7 @@ final class HexAbilities {
                         feedback(player, "Wait for your current terrain spell to finish.");
                         return;
                     }
-                    terrainWork = HexTerrain.get(player.serverLevel()).reconstruction(player.getUUID(), BlockPos.containing(target), HexConfig.GENESIS_RADIUS.get() * domain.scale());
+                    terrainWork = HexTerrain.get(player.serverLevel()).reconstruction(player.getUUID(), BlockPos.containing(target), HexConfig.GENESIS_RADIUS.get() * domain.scale() * ScarletSovereignty.reach(player));
                     if (terrainWork.isEmpty()) {
                         terrainWork = null;
                         feedback(player, "Genesis found no recorded changes near your target.");
@@ -263,7 +263,7 @@ final class HexAbilities {
                     feedback(player, "Aim at a block within reach, then release Reality Rewrite.");
                     return;
                 }
-                int radius = rewriteRadius(now - chargeStart);
+                int radius = rewriteRadius(player, now - chargeStart);
                 var journal = HexTerrain.get(player.serverLevel());
                 var center = hit.getBlockPos();
                 restoring = HexConfig.REWRITE.get() == HexConfig.Rewrite.NATURAL;
@@ -330,7 +330,7 @@ final class HexAbilities {
                     case 3 -> barrierAnchor.add(0, 1, 0);
                     default -> player.position().add(0, 1, 0);
                 };
-                float radius = (float) ((barrierMode == 2 ? 2 : barrierMode == 1 ? 2.75 : 3.8) * domain.scale());
+                float radius = (float) ((barrierMode == 2 ? 2 : barrierMode == 1 ? 2.75 : 3.8) * domain.scale() * ScarletSovereignty.reach(player));
                 if (domain.gameplay()) barrier(player, center, radius, now);
                 if (now % 3 == 0) scene(player, HexNetwork.BARRIER_FX, barrierMode + 3, eye, center, now, 7, radius);
             } else if (now % 3 == 0) {
@@ -340,7 +340,7 @@ final class HexAbilities {
                 if (charging == HexSpell.REWRITE) {
                     var hit = trace(player, HexConfig.TELEKINESIS_RANGE.get() * domain.scale() * ScarletSovereignty.reach(player));
                     if (hit != null && hit.getType() == HitResult.Type.BLOCK) {
-                        scene(player, charging, 1, eye, hit.getLocation(), now, 7, rewriteRadius(now - chargeStart));
+                        scene(player, charging, 1, eye, hit.getLocation(), now, 7, rewriteRadius(player, now - chargeStart));
                     }
                 }
             }
@@ -382,7 +382,7 @@ final class HexAbilities {
             var journal = HexTerrain.get(level);
             boolean wave = waveOrigin != null;
             boolean genesis = restoring && reportWork && !wave;
-            int budget = genesis ? journal.claimReconstructionBudget(now)
+            int budget = genesis ? journal.claimReconstructionBudget(now, ScarletSovereignty.empowered(player) ? 1.5 : 1)
                     : wave && !restoring ? HexConfig.CORRUPTION_EDITS.get() : HexConfig.EDITS.get();
             int edits = 0;
             int scanLimit = restoring ? budget : budget * 12;
@@ -474,6 +474,7 @@ final class HexAbilities {
         float blast = domain.phase == HexNetwork.ENHANCED ? HexConfig.ORB_ENHANCED_RADIUS.get()
                 : net.minecraft.util.Mth.lerp(orbCharge, HexConfig.ORB_RADIUS.get(),
                         Math.max(HexConfig.ORB_RADIUS.get(), HexConfig.ORB_MAX_RADIUS.get()));
+        blast *= (float) ScarletSovereignty.reach(player);
         if (struck && domain.gameplay() && !HexConfig.DEMO_ORBS.get()) detonate(player, end, blast, orbCharge, domain.scale());
         scene(player, HexNetwork.ORB_FX, struck ? 1 : 0, orb, end, now, struck ? 45 : 5, struck ? blast * 1.16F : 1.25F);
         orb = struck ? null : next;
@@ -592,9 +593,10 @@ final class HexAbilities {
         feedback(player, "Saved teleportation rune " + id + ".");
     }
 
-    private static int rewriteRadius(long ticks) {
+    private static int rewriteRadius(ServerPlayer player, long ticks) {
         double t = Math.clamp(ticks / (double) HexConfig.REWRITE_CHARGE.get(), 0, 1);
-        return (int) Math.round(6 + (HexConfig.rewriteRadius() - 6) * Math.pow(t, 1.22));
+        return Math.min(75, (int) Math.round((6 + (HexConfig.rewriteRadius() - 6) * Math.pow(t, 1.22))
+                * ScarletSovereignty.reach(player)));
     }
 
     static float rewriteFront(int radius, int duration, long elapsed) {

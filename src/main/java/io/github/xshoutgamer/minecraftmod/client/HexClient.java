@@ -97,6 +97,12 @@ public final class HexClient {
     public static void receive(HexNetwork.Scene scene) {
         checkWorld();
         if (world == null || !world.dimension().location().equals(scene.dimension())) return;
+        if (scene.kind() == ScarletSovereignty.TRANSFORMATION_AUDIO) {
+            SovereigntySound.receive(scene);
+            return;
+        }
+        if (scene.kind() == ScarletSovereignty.PRESENCE
+                && !ScarletSovereignty.Phase.values()[scene.variant()].charging()) SovereigntySound.stop(scene.owner());
         if (scene.kind() == PersonalMagic.ALTAR_FX) {
             Minecraft.getInstance().setScreen(new AstralAltar(PersonalMagic.Attunement.values()[scene.variant()]));
             return;
@@ -117,7 +123,8 @@ public final class HexClient {
         } else {
             long instance = scene.kind() == HexNetwork.RUNE_FX || scene.kind() == HexNetwork.ORB_FX || scene.kind() == PersonalMagic.MEMORY_FX
                     || scene.kind() == HexNetwork.RECONSTRUCTION_FX || scene.kind() == ScarletSovereignty.CAPTURE
-                    || scene.kind() == ScarletSovereignty.FORMATION || scene.kind() == ScarletSovereignty.RELEASE_WAVE ? scene.start() ^ scene.target().hashCode() : 0;
+                    || scene.kind() == ScarletSovereignty.FORMATION || scene.kind() == ScarletSovereignty.RELEASE_WAVE
+                    || scene.kind() == ScarletSovereignty.TERRAIN_FX || scene.kind() == ScarletSovereignty.DOMINION_FX ? scene.start() ^ scene.target().hashCode() : 0;
             int variant = scene.kind() == ScarletSovereignty.PRESENCE ? 0 : scene.variant();
             if (scene.kind() == 6 + HexSpell.REWRITE.ordinal() && scene.variant() == HexNetwork.REWRITE_FADE) {
                 variant = HexNetwork.REWRITE_WAVE;
@@ -131,6 +138,7 @@ public final class HexClient {
         var level = Minecraft.getInstance().level;
         if (world == level) return;
         restoreCamera();
+        SovereigntySound.clear();
         MagicKeys.resetSovereignty();
         world = level;
         DOMAINS.clear();
@@ -343,6 +351,16 @@ public final class HexClient {
         event.scaleNearPlaneDistance(1 - .7F * tint);
         event.scaleFarPlaneDistance(1 - .39F * tint);
         event.setCanceled(true);
+    }
+
+    @SubscribeEvent
+    public static void transformationCamera(net.neoforged.neoforge.client.event.CalculateDetachedCameraDistanceEvent event) {
+        if (savedCamera == null || Minecraft.getInstance().options.getCameraType() != net.minecraft.client.CameraType.THIRD_PERSON_BACK) return;
+        var scene = sovereignty();
+        if (scene == null) return;
+        float strength = (float) Math.clamp(scene.origin().y - scene.target().y, 0, 1);
+        float glide = strength * strength * (3 - 2 * strength);
+        event.setDistance(event.getDistance() + 12 * glide);
     }
 
     @SubscribeEvent

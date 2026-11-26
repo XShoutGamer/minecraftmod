@@ -15,6 +15,17 @@ public final class HexConfig {
     public static final ModConfigSpec.ConfigValue<String> REWRITE_BLOCK;
     private static final ModConfigSpec.IntValue VOLUME_RADIUS, LEGACY_REWRITE_RADIUS;
     public static final ModConfigSpec.IntValue REWRITE_DEPTH, REWRITE_SECONDS;
+    public enum SovereigntyCharge { CINEMATIC, QUICK }
+    public enum SovereigntyDuration { STANDARD, EXTENDED, UNLIMITED_CREATIVE }
+    public enum SovereigntyTerrainEnding { PRESERVE, RESTORE }
+    public static final ModConfigSpec.EnumValue<SovereigntyCharge> SOVEREIGN_CHARGE_MODE;
+    public static final ModConfigSpec.EnumValue<SovereigntyDuration> SOVEREIGN_DURATION_MODE;
+    public static final ModConfigSpec.EnumValue<SovereigntyTerrainEnding> SOVEREIGN_TERRAIN_ENDING;
+    public static final ModConfigSpec.IntValue SOVEREIGN_TERRAIN_RADIUS, SOVEREIGN_TERRAIN_BUDGET,
+            SOVEREIGN_AURA_INTERVAL, SOVEREIGN_AURA_RANGE;
+    public static final ModConfigSpec.BooleanValue SOVEREIGN_TERRAIN;
+    public static final ModConfigSpec.DoubleValue SOVEREIGN_AUDIO, SOVEREIGN_AURA_DAMAGE;
+
     public enum GenesisSpeed { CINEMATIC, RAPID, DIVINE }
     public static final ModConfigSpec.EnumValue<GenesisSpeed> GENESIS_SPEED;
     public static final ModConfigSpec.IntValue SOVEREIGN_MIN, SOVEREIGN_MAX, SOVEREIGN_SKY, SOVEREIGN_CHARGE,
@@ -119,8 +130,17 @@ public final class HexConfig {
         SOVEREIGN_MIN = server.defineInRange("standardRadius", 60, 4, 250);
         SOVEREIGN_MAX = server.defineInRange("chargedRadius", 150, 4, 250);
         SOVEREIGN_SKY = server.defineInRange("atmosphereRadius", 350, 20, 500);
-        SOVEREIGN_CHARGE = server.defineInRange("chargeTicks", 140, 20, 400);
-        SOVEREIGN_LIFE = server.defineInRange("activeSeconds", 30, 5, 120);
+        SOVEREIGN_CHARGE_MODE = server.defineEnum("transformationMode", SovereigntyCharge.CINEMATIC);
+        SOVEREIGN_CHARGE = server.defineInRange("quickChargeTicks", 120, 100, 140);
+        SOVEREIGN_DURATION_MODE = server.defineEnum("durationMode", SovereigntyDuration.EXTENDED);
+        SOVEREIGN_LIFE = server.defineInRange("extendedActiveSeconds", 120, 5, 600);
+        SOVEREIGN_TERRAIN = server.define("physicalTerrainWave", true);
+        SOVEREIGN_TERRAIN_RADIUS = server.defineInRange("physicalTerrainRadius", 50, 4, 80);
+        SOVEREIGN_TERRAIN_BUDGET = server.defineInRange("physicalTerrainEditsPerTick", 320, 4, 768);
+        SOVEREIGN_TERRAIN_ENDING = server.defineEnum("terrainOnDismissal", SovereigntyTerrainEnding.RESTORE);
+        SOVEREIGN_AURA_INTERVAL = server.defineInRange("autonomousIntervalTicks", 15, 5, 100);
+        SOVEREIGN_AURA_RANGE = server.defineInRange("autonomousRange", 32, 4, 80);
+        SOVEREIGN_AURA_DAMAGE = server.defineInRange("autonomousDamage", 4D, 0, 40);
         SOVEREIGN_END = server.defineInRange("endingTicks", 100, 20, 200);
         SOVEREIGN_RECOVERY = server.defineInRange("cooldownSeconds", 20, 0, 300);
         SOVEREIGN_FLIGHT = server.define("flight", true);
@@ -180,6 +200,7 @@ public final class HexConfig {
         SOVEREIGN_THRONE = client.define("scarletThrone", true);
         SOVEREIGN_COSTUME = client.define("magicalCostume", true);
         SOVEREIGN_CAMERA = client.define("cinematicCamera", false);
+        SOVEREIGN_AUDIO = client.defineInRange("transformationVolume", .82, 0, 1);
         SOVEREIGN_INVERSION = client.define("releaseInversion", false);
         client.pop();
         HAND_PRESET = client.defineEnum("preset", HandPreset.CINEMATIC);

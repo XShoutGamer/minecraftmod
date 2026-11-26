@@ -81,6 +81,19 @@ def signal(name, duration, seed):
             age = np.maximum(t-start, 0)
             wave += (t >= start) * np.exp(-17*age) * (grit*noise + .18*soft_noise)
         wave *= .68
+    elif name in ("sovereign_transformation", "sovereign_quick"):
+        cinematic = u * 24
+        warmth = .44 + .28 * np.clip((cinematic - 4) / 6, 0, 1)
+        rises = sum(gain * np.exp(-((cinematic - at) / width) ** 2)
+                    for at, width, gain in ((.8, 1.1, .72), (7.4, .85, .78), (11.5, 2.2, .56),
+                                            (15.4, 1.4, .86), (21.6, 1.65, .92)))
+        rumble = np.sin(2 * np.pi * (38 * t + .9 * np.sin(t * 2.4) + 6 * t * u))
+        voice = sum(np.sin(2 * np.pi * frequency * t + 2 * np.sin(t * rate + u * 12))
+                    for frequency, rate in ((93, 1.62), (139, 2.9), (185, .89), (277, 1.3))) / 4
+        crown = np.clip((cinematic - 20) / 2, 0, 1)
+        chimes = sum(np.sin(2 * np.pi * f * t + .7 * np.sin(t * 4.5)) for f in (294, 370, 440, 587, 740)) / 5
+        wave = (.10 + .36 * rises) * (warmth * rumble + .58 * voice + .66 * soft_noise)
+        wave += crown * .22 * chimes * np.sin(np.pi * (cinematic - 20).clip(0, 4) / 4)
     elif name == "sovereign_current":
         sweep = np.sin(2 * np.pi * (48 * t + 15 * t * u))
         chorus = sum(np.sin(2 * np.pi * f * t + 1.1 * np.sin(t * rate))
@@ -114,7 +127,7 @@ def write_audio(selected=()):
     cues = {"summon": 1.7, "gather": 1.1, "charge": 5.78, "descent": 0.82, "impact": 3.1,
             "shockwave": 1.2, "fracture": 0.9, "ambient": 3.8, "dissolve": 1.8, "debris": 1.75, "rumble": 6.4, "release": 2.25,
             "divine_arc": 2.4, "crimson_arc": 1.55, "golden_flow": 2.3, "residual_arc": 1.32, "sovereign_current": 2.2, "sovereign_crown": 2.8,
-            "sovereign_release": 3.4}
+            "sovereign_release": 3.4, "sovereign_transformation": 24, "sovereign_quick": 6}
     for i, (name, duration) in enumerate(cues.items()):
         if selected and name not in selected:
             continue

@@ -13,7 +13,7 @@ final class SovereigntyGeometry {
     static void presence(NailMesh light, NailMesh dark, Vec3 eye, float time, float strength, double scale,
                          Phase phase, int quality, float yaw, boolean firstPerson) {
         float alpha = phase == Phase.COLLAPSING ? strength : 1;
-        if (phase.charging() && strength > .14F) absorb(light, dark, eye, time, strength, scale, quality, yaw, firstPerson);
+        if (phase.charging() && strength > .15F) absorb(light, dark, eye, time, strength, scale, quality, yaw, firstPerson);
         if (!firstPerson) {
             var right = new Vec3(Math.cos(yaw), 0, Math.sin(yaw));
             var forward = new Vec3(-Math.sin(yaw), 0, Math.cos(yaw));
@@ -25,7 +25,7 @@ final class SovereigntyGeometry {
                 var hand = hand(i, yaw);
                 arc(light, dark, hand.add(right.scale(i * .2)), hand.add(0, .47, 0), eye, time, 3, .24, i);
             }
-            float crown = phase.charging() ? smooth((strength - .78F) / .19F) : alpha;
+            float crown = phase.charging() ? smooth((strength - 20F / 24) * 6) : alpha;
             if (crown > .01F) crown(light, dark, eye, time, 2.06F, .47F, crown, yaw, 5);
             if (crown > .01F && HexConfig.SOVEREIGN_COSTUME.get()) mantle(light, dark, eye, time, yaw, crown);
         }
@@ -35,7 +35,12 @@ final class SovereigntyGeometry {
                 glyph(light, 32, 19 * Math.max(.08F, alpha), -time * .011F, 11, .52F * alpha, false);
                 motes(light, quality >= 6 ? 580 : 220, 28 * alpha, 60, time, .65F * alpha, 0);
             }
-            fractures(light, dark, eye, time, (float) (scale * .43), alpha, quality >= 6 ? 18 : 9);
+            fractures(light, dark, eye, time, (float) (scale * .49), alpha, quality >= 6 ? 22 : 10);
+            vortex(light, dark, eye, time, scale, alpha, quality, firstPerson);
+        } else if (strength > .30F) {
+            float storm = smooth((strength - .30F) * 2.4F);
+            fractures(light, dark, eye, time, (float) (scale * .70), storm * .72F, quality >= 6 ? 16 : 8);
+            if (strength >= .61F) vortex(light, dark, eye, -time, scale, storm * .65F, quality, firstPerson);
         }
     }
 
@@ -47,7 +52,7 @@ final class SovereigntyGeometry {
     private static void absorb(NailMesh light, NailMesh dark, Vec3 eye, float time, float strength, double scale,
                                int quality, float yaw, boolean firstPerson) {
         float amount = smooth((strength - .14F) / .6F);
-        int streams = (quality >= 6 ? 28 : 16);
+        int streams = quality >= 6 ? 32 : 16;
         for (int i = 0; i < streams; i++) {
             double seed = i * 2.399963;
             float alpha = smooth((strength - .14F - i * .46F / streams) * 6);
@@ -57,15 +62,18 @@ final class SovereigntyGeometry {
             var sink = i % 4 == 0 ? new Vec3(0, 1.32, 0) : hand(i % 2 == 0 ? 1 : -1, yaw);
             if (firstPerson) sink = sink.add(0, -1.20, 0);
             var side = new Vec3(-Math.sin(seed), 0, Math.cos(seed));
-            int knots = quality >= 6 ? 36 : 24;
+            int knots = quality >= 6 ? 48 : 30;
             var path = new Vec3[knots + 1];
             for (int j = 0; j <= knots; j++) {
                 double t = j / (double) knots;
                 double distance = t * t;
                 double taper = Math.sin(Math.PI * t) * (radius * .17 + 1);
                 double oscillation = 8.2 * t + seed + time * .089;
-                path[j] = sink.lerp(source, distance).add(side.scale(taper * (Math.sin(oscillation) * .58 + Math.sin(t * 5 + seed) * .61)))
-                        .add(0, taper * (.65 + .61 * Math.cos(oscillation + seed)), 0);
+                double turbulence = .13 * Math.sin(24 * t + seed * 3.9 - time * .19)
+                        + .065 * Math.sin(41 * t - seed * 8.1 + time * .24);
+                path[j] = sink.lerp(source, distance)
+                        .add(side.scale(taper * (Math.sin(oscillation) * .58 + Math.sin(t * 5 + seed) * .61 + turbulence)))
+                        .add(0, taper * (.65 + .61 * Math.cos(oscillation + seed) + turbulence), 0);
             }
             float width = (float) Math.clamp(radius * .027, .19, 5.2);
             float reach = .40F + smooth(amount * 1.9F) * .63F;
@@ -76,9 +84,12 @@ final class SovereigntyGeometry {
             for (int flare = 0; flare < flares; flare++) {
                 double cycle = time * (.017 + i % 5 * .0018) + i * .416 + flare / (double) flares;
                 double travel = (1 - (cycle - Math.floor(cycle))) * Math.min(1, reach);
-                int start = (int) (travel * (knots - 5));
                 var pulse = new Vec3[7];
-                for (int p = 0; p < pulse.length; p++) pulse[p] = path[Math.min(knots, start + p)];
+                for (int p = 0; p < pulse.length; p++) {
+                    double index = Math.min(knots - .001, travel * (knots - 5) + p);
+                    int point = (int) index;
+                    pulse[p] = path[point].lerp(path[point + 1], index - point);
+                }
                 float cameraFade = (float) Math.clamp(pulse[3].distanceToSqr(eye) / 81, 0, 1);
                 float thickness = width * (.13F + (float) travel * .39F);
                 EnergyPath.render(light, pulse, eye, thickness, alpha * .80F * cameraFade,
@@ -116,6 +127,11 @@ final class SovereigntyGeometry {
             if (throne) {
                 light.diamond((float) keel.x, (float) keel.y + 2.4F, (float) keel.z,
                         radius * .095F, radius * .2F, -spin * 2 + i, HOT, alpha * .65F);
+                var monument = polar(0, y - radius * .55, 0, radius * 1.58, angle + .095);
+                dark.section((float) monument.x, (float) monument.y, (float) monument.z,
+                        radius * .67F, radius * .075F, radius * .16F, 5, spin + angle, BLACK, BLOOD, alpha * .71F);
+                light.diamond((float) monument.x, (float) monument.y + radius * .72F, (float) monument.z,
+                        radius * .083F, radius * .34F, spin - angle, HOT, alpha * .58F);
                 if (i % 2 == 0) arc(light, dark, tip, polar(0, y - 2, 0, radius * 1.38, angle + .61),
                         eye, time, 2, radius * .09, i + .7);
             }
@@ -167,6 +183,58 @@ final class SovereigntyGeometry {
             light.diamond((float) fork.x, (float) fork.y + width * .55F, (float) fork.z, width * .38F,
                     width * .7F, turn - time * .034, ROSE, .49F * alpha);
         }
+    }
+
+    private static void vortex(NailMesh light, NailMesh dark, Vec3 eye, float time, double scale,
+                               float alpha, int quality, boolean firstPerson) {
+        int arms = quality >= 6 ? 9 : 5;
+        for (int arm = 0; arm < arms; arm++) {
+            double phase = arm * TURN / arms + time * .018;
+            Vec3[] helix = new Vec3[49];
+            for (int i = 0; i < helix.length; i++) {
+                double t = i / 48D;
+                double radius = 4 + t * t * scale * .28;
+                double wave = Math.sin(t * 13 + phase + time * .033) * .15;
+                helix[i] = polar(0, (firstPerson ? 11 : 5) + t * (34 + arm % 3 * 14) + wave * radius, 0,
+                        radius, phase + t * (7.8 + wave));
+            }
+            EnergyPath.converging(dark, helix, eye, 2.7F, .29F * alpha, BLACK, time * .08F, 1.1F);
+            EnergyPath.converging(light, helix, eye, 1.4F, .25F * alpha, WINE, time * .12F, 1.1F);
+            EnergyPath.converging(light, helix, eye, .23F, .63F * alpha, HOT, time * .23F, 1.1F);
+            for (int i = 2; i < helix.length - 2; i += 7) {
+                var rock = helix[i].add(0, 3 * Math.sin(time * .039 + i), 0);
+                float width = 1.2F + i * .05F;
+                dark.diamond((float) rock.x, (float) rock.y, (float) rock.z, width, width * 1.85F,
+                        i * 1.81 + time * .03, BLOOD, .83F * alpha);
+                light.diamond((float) rock.x, (float) rock.y, (float) rock.z, width * .32F, width * 2.6F,
+                        i * 1.81 - time * .065, ROSE, .38F * alpha);
+            }
+        }
+    }
+
+    static void gate(NailMesh light, NailMesh dark, Vec3 eye, float time, int side) {
+        var path = new Vec3[49];
+        var center = new Vec3(0, 1.65, 0);
+        var width = eye.cross(new Vec3(0, 1, 0)).normalize();
+        if (width.lengthSqr() < .01) width = new Vec3(1, 0, 0);
+        for (int i = 0; i < path.length; i++) {
+            double angle = TURN * (i % 48) / 48;
+            double ripple = 1 + .075 * Math.sin(angle * 9 - time * .12 + side) + .06 * Math.sin(angle * 14 + time * .085);
+            path[i] = center.add(width.scale(Math.cos(angle) * ripple * 1.05))
+                    .add(0, Math.sin(angle) * ripple * 1.53, 0);
+        }
+        for (int i = 0; i < path.length - 1; i++) {
+            var a = path[i];
+            var b = path[i + 1];
+            dark.quad(point(center), point(a), point(b), point(center), BLACK, .85F);
+            if (i % 5 == 0) {
+                var thread = center.lerp(a, .35).add(0, .14 * Math.sin(time * .13 + i), 0);
+                EnergyPath.render(light, new Vec3[]{a, a.lerp(thread, .4).add(0, .14, 0), thread}, eye,
+                        .034F, .65F, side == 0 ? ROSE : 0xffb69b, time * .12F, 1.1F, true);
+            }
+        }
+        EnergyPath.render(light, path, eye, .22F, .42F, WINE, time * .14F, 1.1F, false);
+        EnergyPath.render(light, path, eye, .077F, .93F, side == 0 ? ROSE : 0xffb69b, time * .24F, 1.1F, false);
     }
 
     static void rebuild(NailMesh light, NailMesh dark, Vec3 eye, float time, float life, float r, int quality) {

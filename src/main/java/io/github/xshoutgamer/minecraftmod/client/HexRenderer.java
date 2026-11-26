@@ -425,10 +425,10 @@ final class HexRenderer {
                 float yaw = player == null ? 0 : player.getYHeadRot() * Mth.DEG_TO_RAD;
                 SovereigntyGeometry.presence(light, dark, eye, time, strength, r, phase, quality, yaw, firstPerson);
                 if (!firstPerson) smoke(at.add(0, .48, 0), 3.7F, 2.7F, .68F * strength, .88F, .71F);
-                if (phase.reigning() || strength > .65F) {
+                if (!firstPerson && (phase.reigning() || strength > .56F)) {
                     for (int i = 0; i < (quality >= 6 ? 10 : 5); i++) {
-                        float ring = r * (.12F + .019F * i);
-                        smoke(at.add(polar(0, 27 + (i % 3) * 12, 0, ring, i * 2.399963 + time * .004)),
+                        float ring = r * (.17F + .033F * i);
+                        smoke(at.add(polar(0, 37 + (i % 3) * 19, 0, ring, i * 2.399963 + time * .004)),
                                 ring * 2, 24 + i * 2, .28F * strength, .42F, i * .18F);
                     }
                 }
@@ -452,7 +452,27 @@ final class HexRenderer {
                     SovereigntyGeometry.fractures(light, dark, eye, time, r, alpha, 7);
                 }
             }
+            case ScarletSovereignty.DOMINION_FX -> {
+                var source = scene.origin().subtract(at);
+                if (firstPerson) source = source.lerp(Vec3.ZERO, .23);
+                var tip = source.lerp(Vec3.ZERO, smooth(life * 3.5F));
+                var tail = source.lerp(tip, smooth((life - .48F) * 2F));
+                arc(light, dark, tail, tip, eye, time, 4, Math.min(3.6, .42 + source.length() * .10), scene.start() % 303);
+            }
+            case ScarletSovereignty.GATE_FX -> SovereigntyGeometry.gate(light, dark, eye, time, scene.variant());
+            case ScarletSovereignty.TERRAIN_FX -> {
+                if (scene.variant() == 1) {
+                    float front = Math.max(1, r * (1 - (1 - life) * (1 - life)));
+                    groundRing(light, at, front, eye, alpha * .9F);
+                    groundCurrents(light, at, eye, front, alpha * .65F);
+                } else {
+                    smoke(at.add(0, .8, 0), 6.2F, 3.8F, .65F * alpha, .53F, .38F);
+                    motes(light, quality >= 6 ? 44 : 18, 3.7F, 3.2F, time, alpha, 0);
+                    if (at.distanceToSqr(origin) < 3136) groundCurrents(light, at, eye, 5.2F, alpha);
+                }
+            }
             case ScarletSovereignty.CAPTURE -> {
+                if (scene.variant() == 2) SovereigntyGeometry.rebuild(light, dark, eye, time, 1 - life, 5.5F, quality);
                 aura(light, dark, eye, r * .65F, scene.variant());
                 glyph(light, .27F, r * .82F, time * .028F, 5, .66F * alpha, false);
                 smoke(at, r * 1.75F, r * 1.9F, .59F * alpha, .68F, .14F);

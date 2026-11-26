@@ -1,4 +1,12 @@
 {
+  "sovereign_transformation": {
+    "subtitle": "subtitles.minecraftmod.sovereign_transformation",
+    "sounds": [{"name": "minecraftmod:sovereign_transformation", "stream": true, "attenuation_distance": 28}]
+  },
+  "sovereign_quick": {
+    "subtitle": "subtitles.minecraftmod.sovereign_transformation",
+    "sounds": [{"name": "minecraftmod:sovereign_quick", "attenuation_distance": 28}]
+  },
   "sovereign_current": {
     "subtitle": "subtitles.minecraftmod.sovereign_current",
     "sounds": [{"name": "minecraftmod:sovereign_current", "attenuation_distance": 120}]

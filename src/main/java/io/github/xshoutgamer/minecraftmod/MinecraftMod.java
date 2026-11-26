@@ -55,6 +55,8 @@ public final class MinecraftMod {
     public static final DeferredHolder<SoundEvent, SoundEvent> VOID_SOUND = sound("singularity_collapse");
     public static final DeferredHolder<SoundEvent, SoundEvent> DARKHOLD_SOUND = sound("darkhold_cast");
     public static final DeferredHolder<SoundEvent, SoundEvent> CHAOS_SOUND = sound("chaos_dissolve");
+    public static final DeferredHolder<SoundEvent, SoundEvent> SOVEREIGN_TRANSFORMATION = sound("sovereign_transformation");
+    public static final DeferredHolder<SoundEvent, SoundEvent> SOVEREIGN_QUICK = sound("sovereign_quick");
     public static final DeferredHolder<SoundEvent, SoundEvent> SOVEREIGN_CURRENT = sound("sovereign_current");
     public static final DeferredHolder<SoundEvent, SoundEvent> SOVEREIGN_CROWN = sound("sovereign_crown");
     public static final DeferredHolder<SoundEvent, SoundEvent> SOVEREIGN_RELEASE = sound("sovereign_release");
