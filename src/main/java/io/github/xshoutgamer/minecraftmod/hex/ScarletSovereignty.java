@@ -32,10 +32,10 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
 public final class ScarletSovereignty {
-    public static final int PRESS = 10, RELEASE = 11, CANCEL = 12, COMMAND = 13;
+    public static final int PRESS = 10, RELEASE = 11, CANCEL = 12, COMMAND = 13, DISMISS = 14;
     public static final int PRESENCE = 44, RELEASE_WAVE = 45, FORMATION = 46, CAPTURE = 47;
     public static final int TRANSFORMATION_AUDIO = 48, TERRAIN_FX = 49, GATE_FX = 50, DOMINION_FX = 51;
-    private static final int CINEMATIC_TICKS = 480;
+    private static final int CINEMATIC_TICKS = 200;
 
     public enum Phase {
         INACTIVE, AWAKENING, LEVITATING, ABSORBING, CONVERGING, CROWN_MANIFESTATION, FULLY_CHARGED,
@@ -92,10 +92,7 @@ public final class ScarletSovereignty {
         if (!available(player)) return;
         switch (action) {
             case PRESS -> {
-                if (current != null) {
-                    if (current.phase.reigning()) current.end(player, now);
-                    return;
-                }
+                if (current != null) return;
                 if (now < player.getPersistentData().getLong(RECOVERY)) {
                     tell(player, "Scarlet Sovereignty is recovering.");
                     return;
@@ -115,6 +112,9 @@ public final class ScarletSovereignty {
                     player.getPersistentData().putLong(RECOVERY, now + 10);
                     clear(player);
                 }
+            }
+            case DISMISS -> {
+                if (current != null && current.phase.reigning()) current.end(player, now);
             }
             case COMMAND -> {
                 if (current != null && current.phase.reigning()) current.command(player, now);

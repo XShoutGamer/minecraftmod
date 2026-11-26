@@ -30,7 +30,7 @@ public final class HexNetwork {
         optional.playToServer(Input.TYPE, Input.CODEC, (packet, context) -> {
             if (context.player() instanceof ServerPlayer player) {
                 if (packet.action() >= PersonalMagic.QUICK && packet.action() <= PersonalMagic.LIBRARY_SELECT) PersonalMagic.input(player, packet);
-                else if (packet.action() >= ScarletSovereignty.PRESS && packet.action() <= ScarletSovereignty.COMMAND) {
+                else if (packet.action() >= ScarletSovereignty.PRESS && packet.action() <= ScarletSovereignty.DISMISS) {
                     ScarletSovereignty.input(player, packet.action());
                 } else HexDomains.input(player, packet);
             }

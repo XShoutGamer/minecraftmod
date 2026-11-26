@@ -41,13 +41,18 @@ final class MagicKeys {
         boolean menu = pressed(MENU), quick = pressed(QUICK), cast = pressed(CAST), scripture = pressed(DARK);
         boolean ultimate = pressed(SOVEREIGN);
         boolean secondary = pressed(SECONDARY);
-        if (sovereignHeld && (!SOVEREIGN.isDown() || game.screen != null || !game.isWindowActive())) {
-            send(game.screen != null || !game.isWindowActive() ? ScarletSovereignty.CANCEL : ScarletSovereignty.RELEASE, 0);
-            sovereignHeld = false;
-        }
-        if (ultimate && game.screen == null && game.player != null) {
+        boolean canUseUltimate = game.screen == null && game.isWindowActive() && game.player != null;
+        if (sovereignHeld) {
+            if (!SOVEREIGN.isDown() || !canUseUltimate) {
+                send(canUseUltimate ? ScarletSovereignty.RELEASE : ScarletSovereignty.CANCEL, 0);
+                sovereignHeld = false;
+            }
+            // A key repeat queued during this hold belongs to the current charge.
+        } else if (ultimate && canUseUltimate) {
             if (game.options.keyShift.isDown()) {
                 send(ScarletSovereignty.COMMAND, 0);
+            } else if (HexClient.sovereigntyReigning()) {
+                send(ScarletSovereignty.DISMISS, 0);
             } else {
                 send(ScarletSovereignty.PRESS, 0);
                 sovereignHeld = SOVEREIGN.isDown();

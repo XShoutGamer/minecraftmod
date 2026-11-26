@@ -246,6 +246,11 @@ public final class HexClient {
         };
     }
 
+    static boolean sovereigntyReigning() {
+        var scene = sovereignty();
+        return scene != null && ScarletSovereignty.Phase.values()[scene.variant()].reigning();
+    }
+
     private static HexNetwork.Scene sovereignty() {
         var player = Minecraft.getInstance().player;
         return player == null ? null : EFFECTS.get(new EffectKey(player.getUUID(), ScarletSovereignty.PRESENCE, 0, 0));
