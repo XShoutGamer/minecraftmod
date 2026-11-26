@@ -8,6 +8,8 @@ import io.github.xshoutgamer.minecraftmod.CelestiaConfig;
 import io.github.xshoutgamer.minecraftmod.hex.HexConfig;
 import io.github.xshoutgamer.minecraftmod.hex.HexNetwork;
 import io.github.xshoutgamer.minecraftmod.hex.HexSpell;
+import io.github.xshoutgamer.minecraftmod.hex.PersonalMagic;
+import io.github.xshoutgamer.minecraftmod.hex.PersonalMagic.Power;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -269,6 +271,10 @@ final class HexRenderer {
     }
 
     private void spell(HexNetwork.Scene scene) {
+        if (scene.kind() >= PersonalMagic.BOOK_FX) {
+            personal(scene);
+            return;
+        }
         var at = scene.target();
         if (scene.kind() == HexNetwork.ORB_FX && scene.variant() == 0) {
             if (clock - scene.start() > 2.25) return;
@@ -335,10 +341,20 @@ final class HexRenderer {
                 case REWRITE, GENESIS -> {
                     if (scene.variant() == 1) {
                         groundRing(light, at, r, eye, .54F);
+                        glyph(light, 0, r, time * .008F, 9, .24F, true);
                         glyph(light, .18F, Math.min(2.5F, r * .3F), time * .028F, 6, .56F, false);
                         break;
                     }
-                    float radius = r * Math.max(.12F, Mth.clamp(ticks / 21, 0, 1));
+                    float radius = kind == 7 ? Math.max(1, Math.min(r, ticks / 5 + 1))
+                            : r * Math.max(.12F, Mth.clamp(ticks / 21, 0, 1));
+                    if (kind == 7) {
+                        for (int ring = 0; ring < 3; ring++) {
+                            pose.pushPose();
+                            pose.mulPose(Axis.YP.rotation((float) (ring * TURN / 3 + time * .005F)));
+                            glyph(mesh(true), 0, radius, time * .008F, 12, .25F * alpha, true);
+                            pose.popPose();
+                        }
+                    }
                     groundRing(light, at, radius, eye, .72F * alpha);
                     glyph(light, .42F, radius * .56F, time * .029F, kind == 7 ? 8 : 11, alpha, false);
                     motes(light, count(kind == 7 ? 100 : 175, HexConfig.DENSITY.get()), radius, 5, time, alpha, kind == 7 ? 0 : 1);
@@ -380,6 +396,185 @@ final class HexRenderer {
                 default -> motes(light, count(51, HexConfig.DENSITY.get()), r, r * 2, time, alpha, 0);
             }
         }
+        pose.popPose();
+    }
+
+    private void personal(HexNetwork.Scene scene) {
+        Vec3 at = scene.target();
+        float progress = (float) Math.clamp((clock - scene.start()) / Math.max(1, scene.duration()), 0, 1);
+        if (scene.kind() == PersonalMagic.BOOK_FX) {
+            var game = Minecraft.getInstance();
+            var player = game.level == null ? null : game.level.getPlayerByUUID(scene.owner());
+            if (player != null) {
+                var forward = player.getLookAngle();
+                float yaw = player.getYRot() * Mth.DEG_TO_RAD;
+                var side = new Vec3(-Mth.cos(yaw), 0, -Mth.sin(yaw));
+                if (player == game.player && game.options.getCameraType().isFirstPerson() && scene.variant() == 0) {
+                    var right = new Vec3(camera.getLeftVector().x(), camera.getLeftVector().y(), camera.getLeftVector().z()).scale(-1);
+                    var down = new Vec3(camera.getUpVector().x(), camera.getUpVector().y(), camera.getUpVector().z()).scale(-1);
+                    at = origin.add(forward.scale(2.8)).add(right.scale(2.05)).add(down.scale(1.02));
+                } else {
+                    at = player.getPosition((float) (clock % 1)).add(side.scale(scene.variant() == 1 ? .9 : 1.2))
+                            .add(forward.x * 1.75, scene.variant() == 1 ? 3.8 : 1.1, forward.z * 1.75);
+                }
+            }
+            at = at.add(0, Math.sin(time * .073) * .16, 0);
+            begin(at);
+            float emergence = .28F + .72F * smooth((float) (clock - scene.start()) / 24);
+            book(at, time, emergence * (scene.variant() == 1 ? 1.22F : .84F));
+            pose.popPose();
+            return;
+        }
+
+        begin(at);
+        var light = mesh(true);
+        var dark = mesh(false);
+        var eye = origin.subtract(at);
+        var from = scene.origin().subtract(at);
+        float radius = scene.radius();
+        if (scene.kind() == PersonalMagic.DISSOLVE_FX) {
+            float alpha = 1 - progress * .78F;
+            arc(light, dark, from.lerp(Vec3.ZERO, .25), Vec3.ZERO, eye, time, strands(7), radius * .48, scene.variant() + .8);
+            motes(light, count(75, HexConfig.DENSITY.get()), radius, radius * 2, time, alpha, 1);
+            smoke(at, radius, radius * 1.4F, alpha * .62F, .9F, .52F);
+        } else if (scene.kind() == PersonalMagic.MEMORY_FX) {
+            dark.section(0, -.48F, 0, .96F, .67F, .67F, 4, Math.PI / 4, 0x632456, 0x3a2145, .35F);
+            glyph(light, -.43F, .62F, time * .027F, 4, .72F, false);
+            glyph(light, .49F, .62F, time * .027F, 4, .72F, false);
+        } else if (scene.kind() == PersonalMagic.GUARDIAN_FX) {
+            dark.section(0, -.72F, 0, 1.3F, .15F, .42F, 5, time * .04F, 0x190c29, BLACK, .9F);
+            light.diamond(0, .67F, 0, .34F, .71F, time * .04F, 0xea493f, .7F);
+            glyph(light, .6F, .57F, time * .044F, 5, .76F, true);
+            smoke(at, .72F, 1.1F, .59F, .39F, .74F);
+        } else if (scene.kind() == PersonalMagic.ACTIVATE_FX) {
+            glyph(light, .2F, radius * 1.6F, time * .1F, 7, .68F, false);
+            arc(light, dark, from, new Vec3(0,1.9,0), eye, time, strands(4), .61, scene.variant());
+            smoke(at.add(0, .68, 0), radius * .76F, radius * 1.05F, .46F, .68F, .89F);
+        } else if (scene.kind() == PersonalMagic.POWER_FX) {
+            var power = Power.values()[scene.variant()];
+            float fade = Math.min(1, (1 - progress) * 6);
+            switch (power) {
+                case STEP, PORTAL -> {
+                    portal(at, eye, progress, radius);
+                    pose.pushPose();
+                    pose.translate(from.x, from.y, from.z);
+                    portal(scene.origin(), eye.subtract(from), progress, radius * .78F);
+                    pose.popPose();
+                }
+                case SHIELD -> shell(light, dark, eye, radius, time, null);
+                case DREAM -> {
+                    echo(scene, at);
+                    arc(light, dark, Vec3.ZERO, from, eye, time, strands(4), .72, 4);
+                    glyph(light, .12F, 4, time * .016F, 8, fade * .84F, false);
+                }
+                case ECLIPSE, VOID -> {
+                    float y = power == Power.ECLIPSE ? 62 : 1.7F;
+                    float size = power == Power.ECLIPSE ? 17 : radius * .42F;
+                    pose.pushPose();
+                    pose.translate(0, y, 0);
+                    pose.mulPose(camera.rotation());
+                    var shadow = mesh(false);
+                    var corona = mesh(true);
+                    for (int i = 0; i < 84; i++) {
+                        double a = i * TURN / 84, b = (i + 1) * TURN / 84;
+                        var p = new Point(size * (float)Math.cos(a), size * (float)Math.sin(a), 0);
+                        var q = new Point(size * (float)Math.cos(b), size * (float)Math.sin(b), 0);
+                        var o = new Point(0,0,0);
+                        shadow.quad(o,p,q,o,0x08030e,fade);
+                        corona.softQuad(p,q,new Point(q.x() * 1.18F,q.y() * 1.18F,0),
+                                new Point(p.x() * 1.18F,p.y() * 1.18F,0),0xdb344a,fade * .76F);
+                    }
+                    glyph(corona,0,size * 1.26F,time * .007F,9,fade * .63F,true);
+                    pose.popPose();
+                    smoke(at.add(0,y,0),size*1.39F,size*1.28F,fade*.63F,.38F,.87F);
+                    motes(light,count(96,HexConfig.DENSITY.get()),size*1.49F,y+3,time,fade,1);
+                }
+                case MIRROR -> {
+                    for (int i = 0; i < 15; i++) {
+                        double a = i * 2.399963 + time * .008;
+                        var spot = polar(0, 1.5 + i % 6, 0, radius * (.45 + .07 * (i % 7)), a);
+                        pose.pushPose();
+                        pose.translate(spot.x, spot.y, spot.z);
+                        pose.mulPose(Axis.YP.rotation((float) a));
+                        float width = 1.4F + i % 4 * .31F;
+                        mesh(false).softQuad(new Point(-width,-1.8F,0),new Point(width,-.7F,0),
+                                new Point(width,1.6F,0),new Point(-width,2.1F,0),0x884875,fade*.55F);
+                        glyph(mesh(true),0,width,time*.04F,4,fade*.72F,true);
+                        pose.popPose();
+                    }
+                }
+                case LIBRARY, SCRIPTURE -> {
+                    int books = power == Power.SCRIPTURE ? 11 : 7;
+                    for (int i = 0; i < books; i++) {
+                        var point = polar(0, 2 + i % 4 * 1.5, 0, radius * .52, i * TURN / books + time * .013);
+                        begin(at.add(point));
+                        pose.translate(origin.x-at.x,origin.y-at.y,origin.z-at.z);
+                        book(at.add(point),time + i * 7,.38F);
+                        pose.popPose();
+                        arc(light,dark,Vec3.ZERO,point,eye,time,2,1.24,i);
+                    }
+                    glyph(light, .3F, radius, time * .012F, 9, fade * .85F, false);
+                    glyph(light, power == Power.SCRIPTURE ? 18 : 8, radius * .78F, -time * .016F, 11, fade * .86F, false);
+                    smoke(at.add(0,6,0),radius*.73F,6,fade*.48F,.62F,.44F);
+                }
+                case PRISON -> {
+                    shell(light,dark,eye,radius*.52F,time,null);
+                    glyph(light,.2F,radius*.7F,time*.023F,8,fade,true);
+                    for (int i=0;i<8;i++) arc(light,dark,polar(0,0,0,radius*.52,i*TURN/8),
+                            new Vec3(0,radius*.55,0),eye,time,2,.76,i);
+                }
+                default -> {
+                    glyph(light,.22F,radius*.73F,time*.025F,7,fade,false);
+                    arc(light,dark,from.lerp(Vec3.ZERO,.25),Vec3.ZERO,eye,time,strands(5),radius*.19,4);
+                    motes(light,count(54,HexConfig.DENSITY.get()),radius,radius*.6F,time,fade,0);
+                }
+            }
+        }
+        pose.popPose();
+    }
+
+    private void book(Vec3 at, float clock, float size) {
+        pose.pushPose();
+        var eye = origin.subtract(at);
+        pose.mulPose(Axis.YP.rotation((float) Math.atan2(eye.x, eye.z)));
+        pose.mulPose(Axis.XP.rotationDegrees(-19));
+        pose.scale(size, size, size);
+        var light = mesh(true);
+        var dark = mesh(false);
+        for (int side : new int[]{-1, 1}) {
+            pose.pushPose();
+            pose.mulPose(Axis.ZP.rotationDegrees(side * (17 + 7 * Mth.sin(clock * .074F))));
+            var page = mesh(false);
+            var trim = mesh(true);
+            float outer = side * 1.01F;
+            page.quad(new Point(0,-.7F,-.095F),new Point(outer,-.74F,-.095F),new Point(outer,.74F,-.095F),
+                    new Point(0,.7F,-.095F),0x241619,.99F);
+            for (int i = 0; i < 7; i++) {
+                float depth = -.058F + i * .016F;
+                float edge = side * (.88F + i % 3 * .025F);
+                page.quad(new Point(0,-.62F,depth),new Point(edge,-.63F,depth),new Point(edge,.62F,depth),
+                        new Point(0,.62F,depth),i % 2 == 0 ? 0x82614d : 0x5d423a,.91F);
+                page.quad(new Point(edge,-.63F,depth),new Point(edge,-.63F,depth+.011F),new Point(edge,.62F,depth+.011F),
+                        new Point(edge,.62F,depth),0xaf8070,.83F);
+            }
+            for (int row=0;row<8;row++) {
+                float y = -.49F + row*.135F;
+                for (int glyph=0;glyph<5;glyph++) {
+                    float left = side * (.13F + glyph*.137F);
+                    float width = side * (.048F + (glyph+row)%3*.016F);
+                    trim.softQuad(new Point(left,y,.048F),new Point(left+width,y+.006F,.048F),
+                            new Point(left+width,y+.039F,.048F),new Point(left,y+.033F,.048F),
+                            row % 3 == 0 ? 0xf04940 : 0xa33430,.37F+.22F*Mth.sin(clock*.11F+row));
+                }
+            }
+            pose.popPose();
+        }
+        float leaf = Mth.sin(clock*.17F);
+        dark.softQuad(new Point(0,-.63F,.06F),new Point(leaf*.91F,-.63F,.61F),
+                new Point(leaf*.91F,.63F,.61F),new Point(0,.63F,.06F),0xb27558,.71F);
+        glyph(light,-.94F,1.24F,clock*.023F,7,.79F,false);
+        motes(light,count(40,HexConfig.DENSITY.get()),1.27F,1.78F,time,.63F,0);
+        smoke(at,1.15F*size,1.24F*size,.34F,.47F,.82F);
         pose.popPose();
     }
 

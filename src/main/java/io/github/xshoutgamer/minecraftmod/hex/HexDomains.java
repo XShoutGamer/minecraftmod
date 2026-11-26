@@ -24,7 +24,10 @@ public final class HexDomains {
     static final class Domain {
         final ResourceKey<Level> dimension;
         final HexConfig.Target mode;
-        final float radius;
+        float radius;
+        float expansionFrom;
+        long expansionStart;
+        int expansionStage;
         final HexAbilities abilities = new HexAbilities();
         Vec3 center;
         long phaseStart, deadline, established, nextInput;
@@ -50,8 +53,34 @@ public final class HexDomains {
         boolean gameplay() { return mode != HexConfig.Target.AURA && HexConfig.GAMEPLAY.get(); }
         double scale() { return phase == HexNetwork.ENHANCED ? 1.42 : 1; }
 
+        float reach(long now) {
+            if (phase != HexNetwork.ENHANCED || expansionFrom >= radius) return radius;
+            float t = Math.clamp((now - expansionStart) / (float) HexConfig.EXPANSION.get(), 0, 1);
+            return expansionFrom + (radius - expansionFrom) * t * t * (3 - 2 * t);
+        }
+
+        boolean expand(long now) {
+            if (mode == HexConfig.Target.AURA) return false;
+            int cap = Math.max((int) radius, HexConfig.EXPAND_MAX.get());
+            for (; expansionStage < 3; expansionStage++) {
+                int next = Math.min(cap, switch (expansionStage) {
+                    case 0 -> HexConfig.EXPAND_FIRST.get();
+                    case 1 -> HexConfig.EXPAND_SECOND.get();
+                    default -> HexConfig.EXPAND_MAX.get();
+                });
+                if (next <= radius) continue;
+                expansionFrom = reach(now);
+                expansionStart = now;
+                radius = next;
+                expansionStage++;
+                state(HexNetwork.ENHANCED, now, Math.max(360, HexConfig.EXPANSION.get()));
+                return true;
+            }
+            return false;
+        }
+
         void sync(ServerPlayer player) {
-            scene(player, phase, phase == HexNetwork.COLLAPSING ? collapseProgress : 0, center, player.position(), phaseStart, Math.toIntExact(deadline - phaseStart), radius);
+            scene(player, phase, phase == HexNetwork.COLLAPSING ? collapseProgress : 0, center, player.position(), phaseStart, Math.toIntExact(deadline - phaseStart), reach(player.level().getGameTime()));
         }
     }
 
@@ -132,11 +161,12 @@ public final class HexDomains {
                 else domain.abilities.tick(domain, player, now);
                 if (now % 140 == 0) sound(player, domain.center, MinecraftMod.HEX_HUM.get(), .42F, 1);
             }
-            if (now % 10 == 0) domain.sync(player);
+            if (now % (domain.phase == HexNetwork.ENHANCED ? 2 : 10) == 0) domain.sync(player);
         }
     }
 
     private static void collapse(Domain domain, ServerPlayer player, long now) {
+        domain.radius = domain.reach(now);
         float progress = domain.phase == HexNetwork.AWAKENING ? 0
                 : domain.phase == HexNetwork.EXPANDING
                 ? Math.clamp((now - domain.phaseStart) / (float) (domain.deadline - domain.phaseStart), 0, 1) : 1;
@@ -211,7 +241,7 @@ public final class HexDomains {
     private static void broadcast(ServerLevel level, UUID owner, int kind, int variant, Vec3 origin, Vec3 target,
                                   long now, int duration, float radius) {
         var scene = new HexNetwork.Scene(level.dimension().location(), owner, origin, target, now, duration, kind, variant, radius);
-        double distance = Math.max(170, radius + 104);
+        double distance = Math.max(190, radius + 150);
         for (var viewer : level.players()) {
             if (viewer.getUUID().equals(owner) || viewer.distanceToSqr(origin) < distance * distance
                     || viewer.distanceToSqr(target) < distance * distance) scene.send(viewer);

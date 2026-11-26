@@ -172,5 +172,17 @@
     "sounds": [
       "minecraftmod:scarlet/hex_cast"
     ]
+  },
+  "darkhold_cast": {
+    "subtitle": "subtitles.minecraftmod.darkhold_cast",
+    "sounds": [
+      "minecraftmod:scarlet/darkhold_cast"
+    ]
+  },
+  "chaos_dissolve": {
+    "subtitle": "subtitles.minecraftmod.chaos_dissolve",
+    "sounds": [
+      "minecraftmod:scarlet/chaos_dissolve"
+    ]
   }
 }

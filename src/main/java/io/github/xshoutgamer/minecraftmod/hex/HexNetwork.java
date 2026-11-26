@@ -24,7 +24,10 @@ public final class HexNetwork {
     public static void register(PayloadRegistrar registrar) {
         var optional = registrar.optional();
         optional.playToServer(Input.TYPE, Input.CODEC, (packet, context) -> {
-            if (context.player() instanceof ServerPlayer player) HexDomains.input(player, packet);
+            if (context.player() instanceof ServerPlayer player) {
+                if (packet.action() >= PersonalMagic.QUICK && packet.action() <= PersonalMagic.GRIMOIRE_RELEASE) PersonalMagic.input(player, packet);
+                else HexDomains.input(player, packet);
+            }
         });
         optional.playToClient(Scene.TYPE, Scene.CODEC, (packet, context) -> HexClient.receive(packet));
     }

@@ -52,10 +52,19 @@ final class HexAbilities {
     private long echoEnd;
     private Deque<BlockPos> terrainWork;
     private boolean restoring, reportWork;
+    private Vec3 corruptionCenter;
+    private int corruptionRadius;
+    private long corruptionStart;
+    private final java.util.Set<java.util.UUID> corrupted = new java.util.HashSet<>();
     private int changedBlocks;
     boolean ascended;
 
     static Vec3 aim(ServerPlayer player, double range) {
+        var hit = trace(player, range);
+        return hit == null ? player.getEyePosition().add(player.getLookAngle().scale(range)) : hit.getLocation();
+    }
+
+    static BlockHitResult trace(ServerPlayer player, double range) {
         var start = player.getEyePosition();
         var end = start.add(player.getLookAngle().scale(range));
         var level = player.serverLevel();
@@ -65,12 +74,12 @@ final class HexAbilities {
             var state = level.getBlockState(pos);
             return level.clipWithInteractionOverride(start, end, pos, clip.getBlockShape(state, level, pos), state);
         }, clip -> null);
-        return hit == null ? end : hit.getLocation();
+        return hit;
     }
 
     void press(HexDomains.Domain domain, ServerPlayer player, HexSpell spell, long now) {
         if (charging != null || now < readyAt[spell.ordinal()]) return;
-        if (player.position().subtract(domain.center).horizontalDistance() > domain.radius) {
+        if (player.position().subtract(domain.center).horizontalDistance() > domain.reach(now)) {
             player.displayClientMessage(Component.literal("Return to your Scarlet Hex to cast."), true);
             return;
         }
@@ -193,7 +202,10 @@ final class HexAbilities {
                 scene(player, spell, 0, eye, target, now, 100, (float) (22 * domain.scale()));
             }
             case SCARLET_WORLD -> {
-                domain.state(HexNetwork.ENHANCED, now, 360);
+                if (!domain.expand(now)) {
+                    feedback(player, "The Scarlet Hex has reached its maximum radius.");
+                    return;
+                }
                 domain.sync(player);
                 HexDomains.sound(player, domain.center, MinecraftMod.HEX_EXPAND.get(), 1.35F, .57F);
             }
@@ -222,12 +234,12 @@ final class HexAbilities {
                 held.clear();
             }
             case REWRITE -> {
-                int radius = (int) (net.minecraft.util.Mth.lerp(strength, 2, HexConfig.REWRITE_RADIUS.get()) * domain.scale());
+                int radius = rewriteRadius(now - chargeStart);
                 if (domain.gameplay() && HexTerrain.canRewrite(player)) {
                     var center = BlockPos.containing(target.add(0, -.03, 0));
                     restoring = HexConfig.REWRITE.get() == HexConfig.Rewrite.NATURAL;
                     terrainWork = restoring ? HexTerrain.get(player.serverLevel()).restoration(player.getUUID(), center, radius)
-                            : HexTerrain.patch(center, radius);
+                            : HexTerrain.volume(center, radius, HexConfig.VOLUME_SHAPE.get());
                     if (terrainWork.isEmpty()) {
                         terrainWork = null;
                         feedback(player, "Natural Restoration found no recorded changes in this patch.");
@@ -238,7 +250,13 @@ final class HexAbilities {
                 } else if (domain.gameplay()) {
                     feedback(player, HexTerrain.rewriteRestriction(player));
                 }
-                scene(player, spell, 0, eye, target, now, 68, radius);
+                scene(player, spell, 0, eye, target, now, Math.max(68, radius * 5), radius);
+                if (domain.gameplay()) {
+                    corruptionCenter = target;
+                    corruptionRadius = radius;
+                    corruptionStart = now;
+                    corrupted.clear();
+                }
             }
             case ORB -> {
                 orb = eye;
@@ -255,7 +273,7 @@ final class HexAbilities {
     void tick(HexDomains.Domain domain, ServerPlayer player, long now) {
         var level = player.serverLevel();
         var eye = hand(player);
-        if (charging != null && player.position().subtract(domain.center).horizontalDistance() > domain.radius + 3) {
+        if (charging != null && player.position().subtract(domain.center).horizontalDistance() > domain.reach(now) + 3) {
             if (charging == HexSpell.TELEKINESIS) release(domain, player, now);
             charging = null;
         }
@@ -283,7 +301,8 @@ final class HexAbilities {
                 if (domain.gameplay()) barrier(player, center, radius, now);
                 if (now % 3 == 0) scene(player, HexNetwork.BARRIER_FX, barrierMode + 3, eye, center, now, 7, radius);
             } else if (now % 3 == 0) {
-                float growth = Math.clamp((now - chargeStart) / (float) HexConfig.ORB_CHARGE.get(), .15F, 1F);
+                int chargeTime = charging == HexSpell.REWRITE ? HexConfig.REWRITE_CHARGE.get() : HexConfig.ORB_CHARGE.get();
+                float growth = Math.clamp((now - chargeStart) / (float) chargeTime, .15F, 1F);
                 HexDomains.scene(player, HexNetwork.HAND_FX, charging.ordinal(), eye, eye.add(player.getLookAngle()), now, 7, growth);
             }
         }
@@ -314,14 +333,32 @@ final class HexAbilities {
                 changedBlocks = 0;
             }
         }
+        if (corruptionCenter != null && domain.gameplay()) {
+            float front = Math.min(corruptionRadius, (now - corruptionStart) / 5F + 1);
+            applyCorruption(player, corruptionCenter, front, now);
+            if (front >= corruptionRadius) corruptionCenter = null;
+        }
         if (terrainWork != null && domain.gameplay()) {
             var journal = HexTerrain.get(level);
-            for (int i = 0; i < HexConfig.EDITS.get() && !terrainWork.isEmpty(); i++) {
+            int budget = HexConfig.EDITS.get();
+            int edits = 0;
+            int scanLimit = restoring ? budget : budget * 12;
+            Vec3 changedAt = null;
+            for (int i = 0; i < scanLimit && edits < budget && !terrainWork.isEmpty(); i++) {
                 var pos = terrainWork.removeFirst();
-                if (restoring) changedBlocks += journal.restore(player, pos) ? 1 : 0;
-                else changedBlocks += journal.rewrite(player, pos);
+                int change = restoring ? (journal.restore(player, pos) ? 1 : 0)
+                        : HexConfig.VOLUME_SHAPE.get() == HexConfig.Volume.TERRAIN
+                        ? journal.rewrite(player, pos) : journal.rewriteBlock(player, pos);
+                if (change > 0) {
+                    edits += change;
+                    changedAt = Vec3.atCenterOf(pos);
+                }
             }
-            if (terrainWork.isEmpty()) {
+            changedBlocks += edits;
+            if (!restoring && changedAt != null && now % 4 == 0) {
+                scene(player, PersonalMagic.DISSOLVE_FX, 3, changedAt.add(0,-.8,0), changedAt, now, 14, 1.4F);
+            }
+            if (terrainWork.isEmpty() || !restoring && journal.full()) {
                 if (reportWork) feedback(player, (restoring ? "Genesis restored " : "Reality Rewrite changed ") + changedBlocks + " blocks.");
                 terrainWork = null;
                 reportWork = false;
@@ -368,6 +405,10 @@ final class HexAbilities {
     }
 
     static int detonate(ServerPlayer player, Vec3 at, double radius, float charge, double scale) {
+        return detonate(player, at, radius, charge, scale, HexConfig.ORB_TERRAIN.get());
+    }
+
+    static int detonate(ServerPlayer player, Vec3 at, double radius, float charge, double scale, boolean terrain) {
         var level = player.serverLevel();
         var source = level.damageSources().source(ORB_DAMAGE, player, player);
         int affected = 0;
@@ -385,7 +426,7 @@ final class HexAbilities {
             }
             affected++;
         }
-        if (HexConfig.ORB_TERRAIN.get() && player.hasPermissions(2)) HexTerrain.get(level).orbScorch(player, at, radius);
+        if (terrain && player.hasPermissions(2)) HexTerrain.get(level).orbScorch(player, at, radius);
         if (HexConfig.DEBUG.get()) feedback(player, "Chaos Orb contacted " + affected + " eligible entities.");
         HexDomains.sound(player, at, MinecraftMod.HEX_EXPAND.get(), 1.5F, .83F);
         return affected;
@@ -476,11 +517,40 @@ final class HexAbilities {
         feedback(player, "Saved teleportation rune " + id + ".");
     }
 
+    private static int rewriteRadius(long ticks) {
+        double t = Math.clamp(ticks / (double) HexConfig.REWRITE_CHARGE.get(), 0, 1);
+        return (int) Math.round(4 + (HexConfig.rewriteRadius() - 4) * Math.pow(t, 1.25));
+    }
+
+    private void applyCorruption(ServerPlayer player, Vec3 at, float radius, long now) {
+        for (var mob : player.level().getEntitiesOfClass(Mob.class, new AABB(at, at).inflate(radius),
+                entity -> eligible(player, entity) && !player.isAlliedTo(entity)
+                        && !(entity instanceof net.minecraft.world.entity.TamableAnimal pet && pet.isOwnedBy(player))
+                        && (!HexConfig.CORRUPTION_HOSTILE.get() || entity instanceof Enemy)
+                        && entity.distanceToSqr(at) < radius * radius)) {
+            if (!corrupted.add(mob.getUUID())) continue;
+            float damage = HexConfig.CORRUPTION_DAMAGE.get().floatValue();
+            if (HexConfig.CORRUPTION_FALLOFF.get()) damage *= Math.max(0, 1 - playerDistance(at, mob) / corruptionRadius);
+            if (damage > 0) mob.hurt(player.level().damageSources().indirectMagic(player, player), damage);
+            int duration = HexConfig.CORRUPTION_TICKS.get();
+            if (duration > 0) {
+                mob.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, duration, 1));
+                mob.addEffect(new MobEffectInstance(MobEffects.GLOWING, duration, 0));
+            }
+            var glow = mob.getBoundingBox().getCenter();
+            scene(player, PersonalMagic.DISSOLVE_FX, 4, glow.add(0,-1,0), glow, now, 22, 1);
+        }
+    }
+
+    private static float playerDistance(Vec3 point, Entity entity) {
+        return (float) entity.position().distanceTo(point);
+    }
+
     private static void feedback(ServerPlayer player, String text) {
         player.displayClientMessage(Component.literal(text), true);
     }
 
-    private static Vec3 safeArrival(ServerPlayer player, Vec3 target) {
+    static Vec3 safeArrival(ServerPlayer player, Vec3 target) {
         var level = player.serverLevel();
         var base = BlockPos.containing(target.add(0, .05, 0));
         for (int dy = 0; dy <= 4; dy++) {
@@ -502,7 +572,7 @@ final class HexAbilities {
         return null;
     }
 
-    private static void barrier(ServerPlayer player, Vec3 center, float radius, long now) {
+    static void barrier(ServerPlayer player, Vec3 center, float radius, long now) {
         for (var projectile : player.level().getEntitiesOfClass(Projectile.class, new AABB(center, center).inflate(radius + 1),
                 entity -> entity.getOwner() != player && eligible(player, entity))) {
             var normal = projectile.position().subtract(center);
@@ -573,6 +643,8 @@ final class HexAbilities {
         orb = null;
         echoPosition = null;
         terrainWork = null;
+        corruptionCenter = null;
+        corrupted.clear();
         ascended = false;
         resetFlight(player);
     }

@@ -19,6 +19,10 @@ public final class CelestialBlocks {
     public static final DeferredBlock<Block> FRACTURE = stone("celestial_fracture", 8, SoundType.DEEPSLATE);
     public static final DeferredBlock<Block> FRAME = stone("celestial_frame", 2, SoundType.STONE);
 
+    public static final DeferredBlock<Block> SCARLET_STONE = BLOCKS.register("scarlet_stone", () -> new Block(
+            BlockBehaviour.Properties.of().strength(2.8F, 7).sound(SoundType.DEEPSLATE)
+                    .lightLevel(state -> 4).noLootTable()));
+
     private CelestialBlocks() {}
 
     private static DeferredBlock<Block> stone(String name, int light, SoundType sound) {

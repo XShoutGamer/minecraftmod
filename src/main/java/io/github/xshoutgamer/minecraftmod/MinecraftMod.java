@@ -3,6 +3,7 @@ package io.github.xshoutgamer.minecraftmod;
 import io.github.xshoutgamer.minecraftmod.nail.CelestialNail;
 import io.github.xshoutgamer.minecraftmod.hex.HexConfig;
 import io.github.xshoutgamer.minecraftmod.hex.HexDomains;
+import io.github.xshoutgamer.minecraftmod.hex.PersonalMagic;
 import io.github.xshoutgamer.minecraftmod.nail.NailCast;
 import io.github.xshoutgamer.minecraftmod.nail.NailCooldown;
 import net.minecraft.core.registries.Registries;
@@ -48,6 +49,8 @@ public final class MinecraftMod {
     public static final DeferredHolder<SoundEvent, SoundEvent> HEX_EXPAND = sound("hex_expand");
     public static final DeferredHolder<SoundEvent, SoundEvent> HEX_HUM = sound("hex_hum");
     public static final DeferredHolder<SoundEvent, SoundEvent> HEX_COLLAPSE = sound("hex_collapse");
+    public static final DeferredHolder<SoundEvent, SoundEvent> DARKHOLD_SOUND = sound("darkhold_cast");
+    public static final DeferredHolder<SoundEvent, SoundEvent> CHAOS_SOUND = sound("chaos_dissolve");
     public static final DeferredHolder<SoundEvent, SoundEvent> HEX_CAST = sound("hex_cast");
 
     public MinecraftMod(IEventBus bus, ModContainer container) {
@@ -57,6 +60,11 @@ public final class MinecraftMod {
         bus.addListener(NailCast::register);
         NeoForge.EVENT_BUS.addListener(NailCooldown::register);
         NeoForge.EVENT_BUS.addListener(HexDomains::tick);
+        NeoForge.EVENT_BUS.addListener(PersonalMagic::tick);
+        NeoForge.EVENT_BUS.addListener(PersonalMagic::damage);
+        NeoForge.EVENT_BUS.addListener(PersonalMagic::login);
+        NeoForge.EVENT_BUS.addListener(PersonalMagic::logout);
+        NeoForge.EVENT_BUS.addListener(PersonalMagic::stop);
         NeoForge.EVENT_BUS.addListener(HexDomains::temporalTick);
         NeoForge.EVENT_BUS.addListener(HexDomains::adjustDamage);
         NeoForge.EVENT_BUS.addListener(HexDomains::stop);

@@ -16,7 +16,7 @@ Use a disposable world for the first cast. Install the same mod version on the s
 
 Tap **N** to establish or dismiss the Hex. Hold **N** to open the spell wheel, point at a glyph, and release **N** to select it. **Esc** closes the wheel. **V** casts the selected spell. For a sustained spell, hold **V** and release it to finish. Both bindings are in Minecraft's Controls menu.
 
-**R**, **F**, and **C** default to Chaos Energy Orb, Chaos Barrier, and Absolute Telekinesis. Hold **N**, hover over a spell, and press one of those keys to save the assignment. The three shortcut keys can be changed individually in Minecraft Controls. If a shortcut shares the swap-hands key, the shortcut takes priority while you can cast Hex spells.
+**G**, **F**, and **H** default to Chaos Energy Orb, Chaos Barrier, and Absolute Telekinesis. Hold **N**, hover over a spell, and press one of those keys to save the assignment. **R** and **C** are reserved for independent magic by default. If an existing profile has Hex shortcuts bound to either key, rebind those shortcuts in Controls. The three shortcut keys can be changed individually in Minecraft Controls. If a shortcut shares the swap-hands key, the shortcut takes priority while you can cast Hex spells.
 
 | Spell | Controls and behavior |
 | --- | --- |
@@ -31,7 +31,7 @@ Tap **N** to establish or dismiss the Hex. Hold **N** to open the spell wheel, p
 | Chaos Gravity Field | Press **V** to lift nearby entities. Crouch when casting to cycle the gravity modes. |
 | Astral Echo | Press **V** for a moving crimson projection. Crouch to anchor it in place. It attacks nearby hostile mobs in sight while the domain is active. |
 | Genesis | Aim at the altered area and press **V** to restore your recorded block changes. |
-| Scarlet World | Press **V** to intensify the domain and increase spell range for 18 seconds. |
+| Scarlet World | Press **V** to expand the physical domain in stages to 150, 200, and 300 blocks from the default 100. The casting boost fades, and the expanded radius lasts until dismissal. |
 
 The domain defaults to a 100-block radius, five seconds of expansion, and persistence until dismissal. The **Ultra Scarlet** and **Cinematic Overdrive** presets request the server's separate 150-block default. Operators can set both radii to the same value if they want a single world-wide gameplay radius. The server also controls target mode, spell cooldowns, duration, and permissions in `minecraftmod-hex-server.toml`. The default aim mode uses where you're looking. Stationary, following, and cosmetic aura modes are available. Active domains and spells clear on logout or dimension travel.
 
@@ -42,6 +42,17 @@ Reality Rewrite edits blocks by default for the owner of a local world, even wit
 The `firstPersonMagic` section of `minecraftmod-hex-client.toml` controls the hand aura preset, offsets, spacing, scale, spark density, smoke, glow, camera fade, tendril length, and soft crosshair mask. Third-person hand scale has its own setting.
 
 The Orb defaults to an 8–15 block blast, or 25 blocks during Scarlet World. Player damage and terrain edits from the Orb are off by default. Protection runes reduce damage to their owner and allies. Silence applies to other players' Hex spell casts. Teleportation anchors persist. Other active rune effects expire or clear when their domain closes. Temporal Authority slows or suspends eligible entity ticks locally. Gravity fields steer entities by velocity without permanently changing their gravity or AI flags. Set `abilityDebug = true` on the server to show cast targets and affected counts where available.
+
+## Independent Chaos Magic and Darkhold
+
+- **X** channels Chaos Disintegration at a mob or block under your crosshair. The target must still be reachable when the channel finishes. Crouch while casting to channel a small block area. Block removal uses the Reality Rewrite permissions and is recorded for Genesis.
+- **R** opens the independent spell menu and **C** casts its selected power. It contains Chaos Flight, Personal Chaos Shield, Reality Step, Personal Telekinesis, and Chaos Projection. These powers work without a Hex.
+- Tap **J** to summon or dismiss the Darkhold. While it is summoned, hold **J** to open the grimoire. Click a spell, then press and release **K** to cast, or hold **K** for extra power. Crouch while casting Memory of Reality to restore a bounded batch of your recorded changes.
+- Darkhold spells include an anchored Dreamwalker flight, Abyssal Portal teleportation, orbiting Forbidden Guardians, a local Eternal Eclipse, Mirror Reality illusions, Void Singularity pull, an Astral Library sanctuary, Dimensional Prison for hostile mobs, Memory of Reality, and The Forbidden Scripture range boost.
+
+The default Reality Rewrite shape is a sphere. Set `rewriteVolume` to `CYLINDER`, `TERRAIN`, or `CUBE` for other shapes. Hold the spell to increase its radius from 4 blocks up to 40 blocks within `rewriteChargeTicks` by default. Set `rewriteVolumeMaxRadius` to override it. A customized legacy radius is honored when the new setting is zero. The Scarlet palette blackens logs and planks, removes foliage, and adds animated Scarlet-Fractured Stone. Mob corruption is separately configurable. Edits run in batches and stop at the per-dimension restoration journal limit.
+
+Dreamwalker uses the player's existing avatar and returns it to an anchor if safe. The library and Mirror Reality use visual geometry. Memory of Reality previews recorded locations with spectral markers. Guardians are server-controlled projections. Container block entities are protected, and exact reconstruction requires previously recorded edits.
 
 ## Configuration
 

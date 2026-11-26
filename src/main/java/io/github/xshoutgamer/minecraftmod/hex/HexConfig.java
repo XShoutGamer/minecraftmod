@@ -4,10 +4,17 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 
 public final class HexConfig {
     public enum HandPreset { MINIMAL, BALANCED, CINEMATIC, CINEMATIC_OVERDRIVE }
+    public enum Volume { SPHERE, CYLINDER, TERRAIN, CUBE }
+    public static final ModConfigSpec.EnumValue<Volume> VOLUME_SHAPE;
+    public static final ModConfigSpec.BooleanValue CORRUPTION_HOSTILE, CORRUPTION_FALLOFF;
+    public static final ModConfigSpec.DoubleValue CORRUPTION_DAMAGE;
+    public static final ModConfigSpec.IntValue CORRUPTION_TICKS;
+    public static final ModConfigSpec.IntValue EXPAND_FIRST, EXPAND_SECOND, EXPAND_MAX, REWRITE_CHARGE;
     public enum Rewrite { SCARLET, CRYSTALLINE, CELESTIAL, GOLDEN, OBSIDIAN, NATURAL, CUSTOM }
     public static final ModConfigSpec.EnumValue<Rewrite> REWRITE;
     public static final ModConfigSpec.ConfigValue<String> REWRITE_BLOCK;
-    public static final ModConfigSpec.IntValue REWRITE_RADIUS, REWRITE_DEPTH, REWRITE_SECONDS;
+    private static final ModConfigSpec.IntValue VOLUME_RADIUS, LEGACY_REWRITE_RADIUS;
+    public static final ModConfigSpec.IntValue REWRITE_DEPTH, REWRITE_SECONDS;
     public enum Target { LOOK, STATIONARY, FOLLOW, AURA }
 
     public static final ModConfigSpec SERVER, CLIENT;
@@ -19,6 +26,8 @@ public final class HexConfig {
     public static final ModConfigSpec.EnumValue<Target> TARGET;
     public static final ModConfigSpec.IntValue RADIUS, ULTRA_RADIUS, EXPANSION, COLLAPSE, LIFE, COOLDOWN_PERCENT, TELEKINESIS_LIMIT,
             TELEKINESIS_RANGE, EDITS, RECORDS, TEMPORAL_TICKS, RUNE_RADIUS;
+    public static final ModConfigSpec.IntValue DISINTEGRATION_RANGE, DISINTEGRATION_AREA;
+    public static final ModConfigSpec.DoubleValue DISINTEGRATION_DAMAGE;
     public static final ModConfigSpec.BooleanValue EDIT, OWNER_REWRITE, RECORD_NAIL, FLIGHT, GAMEPLAY, DEMO_ORBS;
     public static final ModConfigSpec.DoubleValue GRAVITY, RESISTANCE, VOLUME, DENSITY, SMOKE, TENDRILS, LIGHTNING, GLOW, FOG;
     public static final ModConfigSpec.BooleanValue POST_EFFECTS, ORB_PLAYERS, ORB_SELF, ORB_TERRAIN, TEMPORAL_FREEZE, ECHO_ATTACK, ECHO_GUARD, DEBUG;
@@ -31,6 +40,9 @@ public final class HexConfig {
         TARGET = server.defineEnum("targetMode", Target.LOOK);
         RADIUS = server.defineInRange("radius", 100, 10, 250);
         ULTRA_RADIUS = server.defineInRange("ultraRadius", 150, 10, 250);
+        EXPAND_FIRST = server.defineInRange("scarletWorldFirstRadius", 150, 10, 400);
+        EXPAND_SECOND = server.defineInRange("scarletWorldSecondRadius", 200, 10, 400);
+        EXPAND_MAX = server.defineInRange("scarletWorldMaximumRadius", 300, 10, 400);
         EXPANSION = server.defineInRange("expansionTicks", 100, 20, 400);
         COLLAPSE = server.defineInRange("collapseTicks", 100, 20, 400);
         LIFE = server.defineInRange("durationSeconds", 0, 0, 3600);
@@ -42,12 +54,16 @@ public final class HexConfig {
                 .define("singlePlayerTerrainRewrite", true);
         REWRITE = server.defineEnum("rewritePreset", Rewrite.SCARLET);
         REWRITE_BLOCK = server.define("rewriteCustomBlock", "minecraft:red_terracotta");
-        REWRITE_RADIUS = server.defineInRange("rewriteMaxRadius", 13, 2, 25);
+        VOLUME_SHAPE = server.defineEnum("rewriteVolume", Volume.SPHERE);
+        REWRITE_CHARGE = server.defineInRange("rewriteChargeTicks", 120, 20, 200);
+        VOLUME_RADIUS = server.comment("Maximum charged volume radius. Zero uses 40 or a customized legacy radius.")
+                .defineInRange("rewriteVolumeMaxRadius", 0, 0, 40);
+        LEGACY_REWRITE_RADIUS = server.defineInRange("rewriteMaxRadius", 13, 2, 40);
         REWRITE_DEPTH = server.defineInRange("rewriteDepth", 1, 1, 8);
         REWRITE_SECONDS = server.comment("Zero leaves changes until Genesis restores them.").defineInRange("rewriteTemporarySeconds", 0, 0, 3600);
         RECORD_NAIL = server.comment("Record future Celestial Nail excavation for Genesis, within the journal limit.").define("recordNailExcavation", false);
         EDITS = server.defineInRange("terrainEditsPerTick", 24, 1, 128);
-        RECORDS = server.defineInRange("restorationRecordsPerDimension", 8192, 64, 32768);
+        RECORDS = server.defineInRange("restorationRecordsPerDimension", 32768, 64, 300000);
         FLIGHT = server.define("ascensionFlight", true);
         RESISTANCE = server.defineInRange("ascensionDamageResistance", .20, 0, .8);
         GAMEPLAY = server.define("gameplayEffects", true);
@@ -78,6 +94,14 @@ public final class HexConfig {
         ECHO_RANGE = server.defineInRange("echoRange", 16, 4, 48);
         GENESIS_RADIUS = server.defineInRange("genesisRadius", 38, 4, 150);
         DEBUG = server.define("abilityDebug", false);
+        DISINTEGRATION_RANGE = server.defineInRange("disintegrationRange", 32, 6, 64);
+        DISINTEGRATION_AREA = server.comment("Radius for crouch-cast disintegration. Set to zero for single-block only.")
+                .defineInRange("disintegrationAreaRadius", 2, 0, 3);
+        DISINTEGRATION_DAMAGE = server.defineInRange("disintegrationDamage", 22D, 0, 100);
+        CORRUPTION_HOSTILE = server.define("corruptionHostileOnly", true);
+        CORRUPTION_FALLOFF = server.define("corruptionDamageFalloff", true);
+        CORRUPTION_DAMAGE = server.defineInRange("corruptionDamage", 5D, 0, 50);
+        CORRUPTION_TICKS = server.defineInRange("corruptionEffectTicks", 100, 0, 600);
         SERVER = server.build();
 
         var client = new ModConfigSpec.Builder();
@@ -110,6 +134,13 @@ public final class HexConfig {
         client.pop();
         WORLD_HAND_SCALE = client.defineInRange("thirdPersonHandScale", 1D, .5, 2);
         CLIENT = client.build();
+    }
+
+    public static int rewriteRadius() {
+        int configured = VOLUME_RADIUS.get();
+        if (configured > 0) return Math.max(4, configured);
+        int legacy = LEGACY_REWRITE_RADIUS.get();
+        return legacy == 13 ? 40 : Math.max(4, legacy);
     }
 
     private HexConfig() {}

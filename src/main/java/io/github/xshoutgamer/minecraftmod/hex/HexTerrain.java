@@ -98,6 +98,60 @@ public final class HexTerrain extends SavedData {
         return new ArrayDeque<>(positions);
     }
 
+    boolean full() { return changes.size() >= HexConfig.RECORDS.get(); }
+
+    static Deque<BlockPos> volume(BlockPos center, int radius, HexConfig.Volume shape) {
+        if (shape == HexConfig.Volume.TERRAIN) return patch(center, radius);
+        var shells = new ArrayList<Deque<BlockPos>>(radius + 1);
+        for (int i = 0; i <= radius; i++) shells.add(new ArrayDeque<>());
+        for (int x = -radius; x <= radius; x++) {
+            for (int z = -radius; z <= radius; z++) {
+                for (int y = -radius; y <= radius; y++) {
+                    double distance = switch (shape) {
+                        case SPHERE -> Math.sqrt(x * x + y * y + z * z);
+                        case CYLINDER -> Math.max(Math.abs(y), Math.hypot(x, z));
+                        default -> Math.max(Math.abs(y), Math.max(Math.abs(x), Math.abs(z)));
+                    };
+                    if (distance > radius) continue;
+                    var pos = center.offset(x, y, z);
+                    if (shape != HexConfig.Volume.CUBE && distance > radius * .87
+                            && Math.floorMod(Long.hashCode(pos.asLong() * 0x9e3779b97f4a7c15L), 11) < 2) continue;
+                    shells.get((int) distance).add(pos);
+                }
+            }
+        }
+        var result = new ArrayDeque<BlockPos>();
+        for (var shell : shells) result.addAll(shell);
+        return result;
+    }
+
+    int rewriteBlock(ServerPlayer player, BlockPos pos) {
+        var level = player.serverLevel();
+        if (!canRewrite(player) || !level.hasChunkAt(pos) || level.isOutsideBuildHeight(pos)
+                || changes.containsKey(pos) || changes.size() >= HexConfig.RECORDS.get()) return 0;
+        var before = level.getBlockState(pos);
+        var after = material(before);
+        if (after == null || before.equals(after) || !replace(player, pos, before, after)) return 0;
+        long duration = HexConfig.REWRITE_SECONDS.get() * 20L;
+        changes.put(pos, new Change(player.getUUID(), before, after, duration == 0 ? 0 : level.getGameTime() + duration));
+        setDirty();
+        return 1;
+    }
+
+    boolean disintegrate(ServerPlayer player, BlockPos pos) {
+        var level = player.serverLevel();
+        if (!canRewrite(player) || !level.hasChunkAt(pos) || level.isOutsideBuildHeight(pos)
+                || changes.size() >= HexConfig.RECORDS.get() || changes.containsKey(pos)) return false;
+        var before = level.getBlockState(pos);
+        if (before.isAir() || !before.blocksMotion() || before.is(io.github.xshoutgamer.minecraftmod.CelestialBlocks.SCARLET_STONE.get())
+                || before.is(Blocks.DIAMOND_BLOCK) || before.is(Blocks.NETHERITE_BLOCK)) return false;
+        var air = Blocks.AIR.defaultBlockState();
+        if (!replace(player, pos, before, air)) return false;
+        changes.put(pos, new Change(player.getUUID(), before, air, 0));
+        setDirty();
+        return true;
+    }
+
     Deque<BlockPos> restoration(UUID owner, BlockPos center, double radius) {
         var positions = changes.entrySet().stream()
                 .filter(entry -> entry.getValue().owner.equals(owner) && entry.getKey().distSqr(center) <= radius * radius)
@@ -136,7 +190,23 @@ public final class HexTerrain extends SavedData {
                 || before.is(Blocks.DEEPSLATE) || before.is(Blocks.GRANITE) || before.is(Blocks.DIORITE);
         boolean dirt = before.is(net.minecraft.tags.BlockTags.DIRT);
         boolean sand = before.is(net.minecraft.tags.BlockTags.SAND);
-        if (!stone && !dirt && !sand) return null;
+        boolean logs = before.is(net.minecraft.tags.BlockTags.LOGS);
+        boolean planks = before.is(net.minecraft.tags.BlockTags.PLANKS);
+        boolean foliage = before.is(net.minecraft.tags.BlockTags.LEAVES) || before.is(net.minecraft.tags.BlockTags.FLOWERS)
+                || before.is(Blocks.SHORT_GRASS) || before.is(Blocks.TALL_GRASS);
+        boolean masonry = before.is(Blocks.STONE_BRICKS) || before.is(Blocks.BRICKS) || before.is(Blocks.DEEPSLATE_BRICKS)
+                || before.is(Blocks.POLISHED_ANDESITE) || before.is(Blocks.QUARTZ_BLOCK) || before.is(Blocks.SANDSTONE);
+        if (!stone && !dirt && !sand && !logs && !planks && !foliage && !masonry) return null;
+        if (HexConfig.REWRITE.get() == HexConfig.Rewrite.SCARLET) {
+            if (logs) return Blocks.STRIPPED_DARK_OAK_LOG.defaultBlockState().setValue(
+                    net.minecraft.world.level.block.RotatedPillarBlock.AXIS,
+                    before.hasProperty(net.minecraft.world.level.block.RotatedPillarBlock.AXIS)
+                            ? before.getValue(net.minecraft.world.level.block.RotatedPillarBlock.AXIS) : Direction.Axis.Y);
+            if (planks) return Blocks.DARK_OAK_PLANKS.defaultBlockState();
+            if (foliage) return Blocks.AIR.defaultBlockState();
+            if (masonry) return Blocks.POLISHED_BLACKSTONE_BRICKS.defaultBlockState();
+            return (stone ? io.github.xshoutgamer.minecraftmod.CelestialBlocks.SCARLET_STONE.get() : dirt ? Blocks.CRIMSON_NYLIUM : Blocks.RED_TERRACOTTA).defaultBlockState();
+        }
         var block = switch (HexConfig.REWRITE.get()) {
             case SCARLET -> stone ? Blocks.AMETHYST_BLOCK : dirt ? Blocks.OBSIDIAN : Blocks.RED_STAINED_GLASS;
             case CRYSTALLINE -> stone ? Blocks.AMETHYST_BLOCK : Blocks.TINTED_GLASS;

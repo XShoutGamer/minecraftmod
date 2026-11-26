@@ -40,5 +40,13 @@
   "subtitles.minecraftmod.hex_expand": "The Scarlet Hex unfurls",
   "subtitles.minecraftmod.hex_hum": "The Scarlet Hex thrums",
   "subtitles.minecraftmod.hex_collapse": "The Scarlet Hex unravels",
-  "subtitles.minecraftmod.hex_cast": "Scarlet magic crackles"
+  "subtitles.minecraftmod.hex_cast": "Scarlet magic crackles",
+  "key.minecraftmod.disintegrate": "Chaos Disintegration",
+  "key.minecraftmod.chaos_menu": "Independent magic menu",
+  "key.minecraftmod.chaos_cast": "Cast independent magic",
+  "key.minecraftmod.darkhold": "Summon Darkhold / hold for grimoire",
+  "key.minecraftmod.darkhold_cast": "Cast Darkhold spell",
+  "block.minecraftmod.scarlet_stone": "Scarlet-Fractured Stone",
+  "subtitles.minecraftmod.darkhold_cast": "The Darkhold whispers",
+  "subtitles.minecraftmod.chaos_dissolve": "Chaos magic curls inward"
 }

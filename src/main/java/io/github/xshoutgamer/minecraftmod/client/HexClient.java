@@ -6,6 +6,7 @@ import io.github.xshoutgamer.minecraftmod.MinecraftMod;
 import io.github.xshoutgamer.minecraftmod.hex.HexConfig;
 import io.github.xshoutgamer.minecraftmod.hex.HexNetwork;
 import io.github.xshoutgamer.minecraftmod.hex.HexSpell;
+import io.github.xshoutgamer.minecraftmod.hex.PersonalMagic;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -35,7 +36,7 @@ public final class HexClient {
     private static final KeyMapping SPELL = new KeyMapping("key.minecraftmod.hex_cast", InputConstants.Type.KEYSYM,
             GLFW.GLFW_KEY_V, "key.categories.minecraftmod");
     private static final KeyMapping[] SHORTCUTS = {
-        shortcut(1, GLFW.GLFW_KEY_R), shortcut(2, GLFW.GLFW_KEY_F), shortcut(3, GLFW.GLFW_KEY_C)
+        shortcut(1, GLFW.GLFW_KEY_G), shortcut(2, GLFW.GLFW_KEY_F), shortcut(3, GLFW.GLFW_KEY_H)
     };
     private static final Map<UUID, HexNetwork.Scene> DOMAINS = new LinkedHashMap<>();
     private static final Map<UUID, Long> LAST_SEEN = new LinkedHashMap<>();
@@ -52,6 +53,7 @@ public final class HexClient {
     private HexClient() {}
 
     static void keys(RegisterKeyMappingsEvent event) {
+        MagicKeys.register(event);
         event.register(DOMAIN);
         event.register(SPELL);
         for (var mapping : SHORTCUTS) event.register(mapping);
@@ -93,11 +95,17 @@ public final class HexClient {
     public static void receive(HexNetwork.Scene scene) {
         checkWorld();
         if (world == null || !world.dimension().location().equals(scene.dimension())) return;
+        if (scene.kind() == PersonalMagic.BOOK_CLOSED) {
+            EFFECTS.keySet().removeIf(key -> key.owner().equals(scene.owner()) && (key.kind() == PersonalMagic.BOOK_FX
+                    || key.kind() == PersonalMagic.GUARDIAN_FX || key.kind() == PersonalMagic.POWER_FX
+                    && key.variant() >= PersonalMagic.Power.DREAM.ordinal()));
+            return;
+        }
         if (scene.kind() <= HexNetwork.COLLAPSING) {
             DOMAINS.put(scene.owner(), scene);
             LAST_SEEN.put(scene.owner(), world.getGameTime());
         } else {
-            long instance = scene.kind() == HexNetwork.RUNE_FX || scene.kind() == HexNetwork.ORB_FX ? scene.start() : 0;
+            long instance = scene.kind() == HexNetwork.RUNE_FX || scene.kind() == HexNetwork.ORB_FX || scene.kind() == PersonalMagic.MEMORY_FX ? scene.start() ^ scene.target().hashCode() : 0;
             EFFECTS.put(new EffectKey(scene.owner(), scene.kind(), scene.variant(), instance), scene);
             if (EFFECTS.size() > 960) EFFECTS.pollFirstEntry();
         }
@@ -128,6 +136,7 @@ public final class HexClient {
                 : now - LAST_SEEN.getOrDefault(scene.owner(), now) > 45);
         LAST_SEEN.keySet().retainAll(DOMAINS.keySet());
         EFFECTS.values().removeIf(scene -> now >= scene.start() + scene.duration());
+        MagicKeys.tick(EFFECTS.keySet().stream().anyMatch(key -> key.owner().equals(game.player.getUUID()) && key.kind() == PersonalMagic.BOOK_FX));
         var own = DOMAINS.get(game.player.getUUID());
         boolean domainDown = DOMAIN.isDown();
         boolean tap = DOMAIN.consumeClick();
@@ -158,7 +167,7 @@ public final class HexClient {
         }
         castInput(SPELL, selected, game.screen == null);
         for (int slot = 0; slot < SHORTCUTS.length; slot++) {
-            castInput(SHORTCUTS[slot], HexConfig.SHORTCUTS.get(slot).get(), game.screen == null);
+            castInput(SHORTCUTS[slot], HexConfig.SHORTCUTS.get(slot).get(), game.screen == null && !MagicKeys.reserved(SHORTCUTS[slot]));
         }
     }
 
@@ -218,6 +227,12 @@ public final class HexClient {
             double distance = camera.subtract(scene.origin()).horizontalDistance();
             float inside = Mth.clamp((radius - (float) distance) / 13, 0, 1);
             intensity = Math.max(intensity, inside * (scene.kind() == HexNetwork.ENHANCED ? 1 : .75F));
+        }
+        for (var scene : EFFECTS.values()) {
+            if (scene.kind() == PersonalMagic.POWER_FX && scene.variant() == PersonalMagic.Power.ECLIPSE.ordinal()) {
+                float fade = Mth.clamp((float) (scene.start() + scene.duration() - now) / 35, 0, 1);
+                intensity = Math.max(intensity, fade * .87F * Mth.clamp((scene.radius() - (float) camera.distanceTo(scene.target())) / 12, 0, 1));
+            }
         }
         return intensity * HexConfig.FOG.get().floatValue();
     }
