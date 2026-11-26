@@ -36,7 +36,7 @@ public final class NailRenderer extends EntityRenderer<CelestialNail> {
     @Override
     public boolean shouldRender(CelestialNail nail, Frustum frustum, double x, double y, double z) {
         double dx = x - nail.getX(), dy = y - nail.target().getY(), dz = z - nail.getZ();
-        int limit = CelestiaConfig.VISUAL_RANGE.get();
+        int limit = CinematicEffects.quality() >= 6 ? 768 : CelestiaConfig.VISUAL_RANGE.get();
         if (dx * dx + dz * dz > (double) limit * limit || Math.abs(dy) > limit) return false;
         double radius = Math.max(CelestiaConfig.BLAST_RADIUS.get() * 1.60, CelestiaConfig.SEAL_DIAMETER.get() * 1.82);
         return frustum.isVisible(new AABB(nail.getX() - radius, nail.target().getY() - 45, nail.getZ() - radius,
@@ -68,7 +68,7 @@ public final class NailRenderer extends EntityRenderer<CelestialNail> {
         float charge = phase == CelestialNail.Phase.CHARGING ? smooth(age / Math.max(1, nail.chargeTicks())) : 0;
         float pulse = (0.78F + 0.22F * Mth.sin(time * 0.13F)) * (1 + charge * 0.68F);
         float distance = (float) Math.sqrt(entityRenderDispatcher.distanceToSqr(nail));
-        if (distance > 285) quality = Math.min(2, quality);
+        if (distance > 285 && quality < 6) quality = Math.min(2, quality);
 
         if (quality > 0 && intensity > 0 && CelestiaConfig.LIGHTNING.get() > 0) {
             storms.computeIfAbsent(nail, entity -> new CelestialStorm(entity.getUUID().getMostSignificantBits()));
@@ -140,7 +140,7 @@ public final class NailRenderer extends EntityRenderer<CelestialNail> {
 
     private static void groundFront(CelestialNail nail, NailMesh mesh, float y, float age, float time, int quality) {
         if (age > 110 || quality == 0) return;
-        int steps = quality > 2 ? 96 : 48;
+        int steps = quality >= 6 ? 192 : quality > 2 ? 96 : 48;
         for (int wave = 0; wave < 3; wave++) {
             float t = (age - wave * 11) / (65 + 8F * wave);
             if (t < 0 || t >= 1) continue;

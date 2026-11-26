@@ -21,7 +21,7 @@ final class CelestialPost {
     static void invalidate() { invalidated = true; }
 
     static boolean render(Minecraft client, float delta, float exposure, float distortion, float haze,
-                          float motion, float monochrome, float x, float y) {
+                          float motion, float monochrome, float scarlet, float scarletWarp, float x, float y) {
         if (invalidated || target != client.getMainRenderTarget()) {
             if (effect != null) effect.close();
             effect = null;
@@ -31,7 +31,7 @@ final class CelestialPost {
             wasMonochrome = false;
         }
         if (monochrome < .003F) wasMonochrome = false;
-        if (exposure < 0.003F && distortion < 0.003F && Math.abs(haze) < 0.003F && motion < 0.003F && monochrome < 0.003F) return false;
+        if (exposure < 0.003F && distortion < 0.003F && Math.abs(haze) < 0.003F && motion < 0.003F && monochrome < 0.003F && scarlet < 0.003F) return false;
         if (unavailable) return false;
         try {
             if (effect == null) {
@@ -50,6 +50,8 @@ final class CelestialPost {
             effect.setUniform("Haze", haze);
             effect.setUniform("Motion", motion);
             effect.setUniform("Monochrome", monochrome);
+            effect.setUniform("Scarlet", scarlet);
+            effect.setUniform("ScarletWarp", scarletWarp);
             effect.setUniform("FocusX", x);
             effect.setUniform("FocusY", y);
             RenderSystem.disableBlend();

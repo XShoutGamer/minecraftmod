@@ -83,6 +83,8 @@
         0.0
       ]
     },
+    { "name": "Scarlet", "type": "float", "count": 1, "values": [0.0] },
+    { "name": "ScarletWarp", "type": "float", "count": 1, "values": [0.0] },
     {
       "name": "FocusX",
       "type": "float",

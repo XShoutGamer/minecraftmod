@@ -46,7 +46,7 @@ final class EnergyChoreography {
                     float y = NailRenderer.floor(nail, x, z, floor) + .74F + (float) Math.sin(t * 14 + branch) * 1.2F;
                     knots[n] = new Vec3(x, y, z);
                 }
-                var path = EnergyPath.spline(knots, quality == 4 ? 3 : 2);
+                var path = EnergyPath.spline(knots, quality >= 4 ? 3 : 2);
                 float pulse = Mth.clamp((age - branch * .75F) / 33, 0, 1.06F);
                 float gain = Mth.clamp(1 - age / 118, 0, 1);
                 EnergyPath.render(mesh, path, null, 2.5F, gain * .34F, 0xc2863f, time * .24F, pulse, true);
@@ -72,7 +72,7 @@ final class EnergyChoreography {
     private static void fallingLights(NailMesh mesh, float y, float time, float reach, float fade, int quality) {
         int variety = CelestiaConfig.PARTICLE_VARIETY.get();
         float density = CelestiaConfig.PARTICLES.get().floatValue();
-        int count = (int) ((quality == 4 ? 180 : 62) * density);
+        int count = (int) ((quality >= 6 ? 460 : quality >= 4 ? 180 : 62) * density);
         for (int i = 0; i < count; i++) {
             float age = Mth.frac(time * (.012F + (i % 5) * .0026F) + i * .381966F);
             double angle = i * 2.39996 + time * .003;

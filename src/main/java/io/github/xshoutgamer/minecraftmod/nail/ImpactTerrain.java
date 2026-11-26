@@ -1,6 +1,8 @@
 package io.github.xshoutgamer.minecraftmod.nail;
 
 import io.github.xshoutgamer.minecraftmod.CelestialBlocks;
+import io.github.xshoutgamer.minecraftmod.hex.HexConfig;
+import io.github.xshoutgamer.minecraftmod.hex.HexTerrain;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -47,7 +49,7 @@ final class ImpactTerrain {
             if (level.isOutsideBuildHeight(pos)) break;
             if (level.isEmptyBlock(pos)) continue;
             if (protectedBlock(level, owner, pos)) break;
-            level.removeBlock(pos, false);
+            removeForImpact(level, owner, pos);
         }
         return i;
     }
@@ -73,10 +75,17 @@ final class ImpactTerrain {
                     pos.setY(y);
                     if (level.isEmptyBlock(pos)) continue;
                     var block = pos.immutable();
-                    if (!protectedBlock(level, owner, block)) level.removeBlock(block, false);
+                    if (!protectedBlock(level, owner, block)) removeForImpact(level, owner, block);
                 }
             }
         }
+    }
+
+    private static void removeForImpact(ServerLevel level, ServerPlayer owner, BlockPos pos) {
+        if (HexConfig.RECORD_NAIL.get()) {
+            var original = level.getBlockState(pos);
+            if (level.removeBlock(pos, false)) HexTerrain.recordNailCut(level, owner, pos, original);
+        } else level.removeBlock(pos, false);
     }
 
     static BlockPos placeLight(ServerLevel level, ServerPlayer owner, BlockPos center, int depth) {

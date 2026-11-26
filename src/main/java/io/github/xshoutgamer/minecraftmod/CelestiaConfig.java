@@ -3,7 +3,7 @@ package io.github.xshoutgamer.minecraftmod;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 public final class CelestiaConfig {
-    public enum Quality { LOW, MEDIUM, HIGH, CINEMATIC, ULTRA_CELESTIAL }
+    public enum Quality { LOW, MEDIUM, HIGH, CINEMATIC, ULTRA_CELESTIAL, ULTRA_SCARLET, CINEMATIC_OVERDRIVE }
     public static final ModConfigSpec.EnumValue<Quality> QUALITY;
     public static final ModConfigSpec SERVER_SPEC;
     public static final ModConfigSpec CLIENT_SPEC;

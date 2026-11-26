@@ -12,12 +12,37 @@ The impact shockwave travels 100 blocks in one second at normal server speed. It
 
 Use a disposable world for the first cast. Install the same mod version on the server and participating clients.
 
+## Scarlet Hex
+
+Tap **N** to establish or dismiss the Hex. Hold **N** to open the spell wheel, point at a glyph, and release **N** to select it. **Esc** closes the wheel. **V** casts the selected spell. For a sustained spell, hold **V** and release it to finish. Both bindings are in Minecraft's Controls menu.
+
+| Spell | Controls and behavior |
+| --- | --- |
+| Absolute Telekinesis | Aim at a mob, item, or falling block and hold **V**. Nearby eligible objects can lift with it. Release to lower them. |
+| Reality Rewrite | Aim at exposed ground and hold **V** to increase the size of the patch. Release to send the wave. |
+| Chaos Energy Orb | Hold **V** to build power, then release to launch a crimson projectile. |
+| Chaos Barrier | Hold **V** to deflect incoming projectiles. Crouch when starting to cycle dome, forward, personal, and stationary modes. |
+| Scarlet Ascension | Press **V** to toggle flight and damage resistance, subject to server settings. |
+| Reality Fracture | Press **V** to open a rift and travel to a validated landing spot. A Teleportation Rune takes priority when present. |
+| Scarlet Runes | Aim and press **V** to place a rune. Crouch and press **V** to cycle Protection, Gravity, Silence, Restoration, and Teleportation. |
+| Temporal Authority | Press **V** to slow nearby hostile mobs, falling blocks, items, and projectiles locally. |
+| Chaos Gravity Field | Press **V** to lift nearby entities. Crouch when casting to cycle the gravity modes. |
+| Astral Echo | Press **V** for a moving crimson projection. Crouch to anchor it in place. |
+| Genesis | Aim at the altered area and press **V** to restore your recorded block changes. |
+| Scarlet World | Press **V** to intensify the domain and increase spell range for 18 seconds. |
+
+The domain defaults to a 100-block radius, five seconds of expansion, and persistence until dismissal. The **Ultra Scarlet** and **Cinematic Overdrive** presets request the server's separate 150-block default. Operators can set both radii to the same value if they want a single world-wide gameplay radius. The server also controls target mode, spell cooldowns, duration, and permissions in `minecraftmod-hex-server.toml`. The default aim mode uses where you're looking. Stationary, following, and cosmetic aura modes are available. Active domains and spells clear on logout or dimension travel.
+
+Reality Rewrite is cosmetic unless an operator enables `terrainRewrite`. Its real mode replaces exposed stone, soil, and sand and records original states in a bounded, persistent per-dimension journal. Genesis restores your changes where the expected replacement is still present. `recordNailExcavation` separately opts into recording future Nail excavation by operators. Genesis needs those records to restore a crater. Containers, fluids, protected blocks, and inaccessible chunks are excluded.
+
+**Cinematic Overdrive** increases smoke ray-march samples, mesh density, tendril detail, and particles, and extends the Nail effects' rendering range and detail. Set `visualQuality = "CINEMATIC_OVERDRIVE"` in `minecraftmod-client.toml`. The Hex uses procedural 3D-density smoke integrated in the fragment shader, translucent and emissive geometry, crimson fog and color grading, and original positional audio. The edition uses view-facing smoke bounds and screen-space lighting. The client settings in `minecraftmod-hex-client.toml` control smoke, glow, sparks, lightning, and atmosphere. Screen distortion defaults to off.
+
 ## Configuration
 
 Use `/celestia cooldown disable` to turn off the Nail's cast cooldown, `/celestia cooldown enable` to restore the configured cooldown, and `/celestia cooldown` to check its status. The setting is saved per world and applies to all players. The commands require cheats or operator permission.
 
 - **Server** — Edit `config/minecraftmod-server.toml`, with optional overrides in the world's `serverconfig` directory. Set `craterRadius` to override the radius. At zero it uses the new 22-block default or a legacy `excavationRadius` customized away from 15. The crater starts cutting on the impact tick and uses its own `craterEditsPerTick` budget. `terrainEditsPerTick` controls the slower branching cuts. Set `visualOnly = true` for an event with no damage, terrain edits, or monument placement. Set `solidificationSeconds = -1` to keep the animated entity. If any part of the monument cannot be safely placed, the entity stays in place and retries when the caster is present.
-- **Graphics** — Set `visualQuality` in `config/minecraftmod-client.toml` to `LOW`, `MEDIUM`, `HIGH`, `CINEMATIC`, or `ULTRA_CELESTIAL`. Ultra adds scene-space exposure, radial blur and distortion, and bright-pixel scattering through a bundled GLSL pass. Effects need no shader pack. If post-processing fails, the renderer uses the fog and exposure overlay. Visual distances are configurable and also depend on world view distance and entity tracking.
+- **Graphics** — Set `visualQuality` in `config/minecraftmod-client.toml` to `LOW`, `MEDIUM`, `HIGH`, `CINEMATIC`, `ULTRA_CELESTIAL`, `ULTRA_SCARLET`, or `CINEMATIC_OVERDRIVE`. The Ultra presets add scene-space exposure, radial blur and distortion, and bright-pixel scattering through a bundled GLSL pass. Effects need no shader pack. If post-processing fails, the renderer uses the fog and exposure overlay. Visual distances are configurable and also depend on world view distance and entity tracking.
 - **Accessibility** — `glowIntensity`, `atmosphericIntensity`, `flashIntensity`, `exposureIntensity`, `distortionIntensity`, `cameraShakeIntensity`, and `motionStreakIntensity` are independent. Set any to zero to turn it off. `reducedEffects = true` uses the lowest geometry budget. Each impact has a single screen exposure pulse.
 - **Protection** — Terrain edits check world bounds, spawn protection, and NeoForge break and placement events. Add blocks to `minecraftmod:impact_immune` to protect them. Claim integration depends on the installed protection mod honoring those events. Placement preflights the whole monument and rolls back canceled placement.
 

@@ -39,7 +39,7 @@ public final class ClientEvents {
         public static void materials(ModelEvent.ModifyBakingResult event) { FlowingBlockModel.wrap(event); }
 
         @SubscribeEvent
-        public static void shaders(RegisterShadersEvent event) { CelestialRenderTypes.load(event); }
+        public static void shaders(RegisterShadersEvent event) { CelestialRenderTypes.load(event); HexMaterials.load(event); }
 
         @SubscribeEvent
         public static void reload(RegisterClientReloadListenersEvent event) {
@@ -52,6 +52,7 @@ public final class ClientEvents {
         @SubscribeEvent
         public static void keys(RegisterKeyMappingsEvent event) {
             event.register(CAST);
+            HexClient.keys(event);
             if (!FMLLoader.isProduction()) event.register(INVERSION_PREVIEW);
         }
 

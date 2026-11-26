@@ -142,5 +142,35 @@
         "attenuation_distance": 55
       }
     ]
+  },
+  "hex_awaken": {
+    "subtitle": "subtitles.minecraftmod.hex_awaken",
+    "sounds": [
+      "minecraftmod:scarlet/hex_awaken"
+    ]
+  },
+  "hex_expand": {
+    "subtitle": "subtitles.minecraftmod.hex_expand",
+    "sounds": [
+      "minecraftmod:scarlet/hex_expand"
+    ]
+  },
+  "hex_hum": {
+    "subtitle": "subtitles.minecraftmod.hex_hum",
+    "sounds": [
+      "minecraftmod:scarlet/hex_hum"
+    ]
+  },
+  "hex_collapse": {
+    "subtitle": "subtitles.minecraftmod.hex_collapse",
+    "sounds": [
+      "minecraftmod:scarlet/hex_collapse"
+    ]
+  },
+  "hex_cast": {
+    "subtitle": "subtitles.minecraftmod.hex_cast",
+    "sounds": [
+      "minecraftmod:scarlet/hex_cast"
+    ]
   }
 }

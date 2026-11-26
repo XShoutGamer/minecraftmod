@@ -5,6 +5,8 @@ uniform vec2 InSize;
 uniform float Exposure;
 uniform float Monochrome;
 uniform float Warp;
+uniform float Scarlet;
+uniform float ScarletWarp;
 uniform float Haze;
 uniform float Motion;
 uniform float FocusX;
@@ -25,6 +27,8 @@ void main() {
     vec2 direction = fromLight / max(0.01, radius);
     float wave = sin(radius * 30.0 - Time * 6.283185) * exp(-radius * 1.35);
     vec2 uv = texCoord + direction * (Warp * wave * 0.022);
+    float fold = sin(texCoord.y * 31.0 + sin(texCoord.x * 13.0) - Time * 12.0);
+    uv.x += ScarletWarp * 0.0025 * fold;
     vec3 color = scene(uv);
     if (Warp > .002) {
         color.r = mix(color.r, scene(uv + direction * Warp * .006).r, .44);
@@ -45,6 +49,14 @@ void main() {
     color *= 1.0 + Exposure * 0.48 + min(Haze, 0.0) * 0.68;
     color += bloom * vec3(0.68, 0.89, 1.0) + shafts * vec3(0.50, 0.68, 0.86);
     color = mix(color, vec3(0.83, 0.96, 1.0), clamp(Exposure * (0.7 + exp(-radius * 3.5) * 0.27), 0.0, 0.88));
+    if (Scarlet > .002) {
+        float grey = dot(color, vec3(.2126, .7152, .0722));
+        float vignette = smoothstep(.15, .96, length((texCoord - .5) * vec2(1.12, 1.03)));
+        vec3 scarletGrade = mix(color, grey * vec3(1.14, .48, .59), .51);
+        float redLight = max(0.0, nearby.r * .25 - max(nearby.g, nearby.b) * .23 - .25);
+        color = mix(color, scarletGrade * (1.0 - .24 * vignette)
+                + redLight * vec3(.55, .03, .12), Scarlet);
+    }
     vec3 original = scene(texCoord);
     float luminance = dot(original, vec3(0.2126, 0.7152, 0.0722));
     color = mix(color, vec3(luminance), Monochrome);

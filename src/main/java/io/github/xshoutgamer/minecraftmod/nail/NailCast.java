@@ -20,6 +20,7 @@ public record NailCast() implements CustomPacketPayload {
     public static void register(RegisterPayloadHandlersEvent event) {
         var registrar = event.registrar("4");
         NailImpact.register(registrar);
+        io.github.xshoutgamer.minecraftmod.hex.HexNetwork.register(registrar);
         registrar.playToServer(TYPE, StreamCodec.unit(INSTANCE), (packet, context) -> {
             if (context.player() instanceof ServerPlayer player) cast(player);
         });

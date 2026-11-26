@@ -1,6 +1,8 @@
 {
   "key.categories.minecraftmod": "Celestia: Divine Authority",
   "key.minecraftmod.cast": "Summon Celestial Nail",
+  "key.minecraftmod.hex": "Scarlet Hex / hold for spell wheel",
+  "key.minecraftmod.hex_cast": "Cast Scarlet spell",
   "entity.minecraftmod.celestial_nail": "Celestial Nail",
   "death.attack.minecraftmod.celestial_shockwave": "%1$s was struck by a celestial shockwave",
   "death.attack.minecraftmod.celestial_shockwave.player": "%1$s was struck by %2$s's celestial shockwave",
@@ -27,5 +29,10 @@
   "subtitles.minecraftmod.crimson_arc": "Crimson lightning tears outward",
   "subtitles.minecraftmod.golden_flow": "Golden current sweeps over the ground",
   "subtitles.minecraftmod.residual_arc": "Celestial residue crackles",
-  "key.minecraftmod.debugInversion": "Preview impact monochrome (development)"
+  "key.minecraftmod.debugInversion": "Preview impact monochrome (development)",
+  "subtitles.minecraftmod.hex_awaken": "Scarlet magic gathers",
+  "subtitles.minecraftmod.hex_expand": "The Scarlet Hex unfurls",
+  "subtitles.minecraftmod.hex_hum": "The Scarlet Hex thrums",
+  "subtitles.minecraftmod.hex_collapse": "The Scarlet Hex unravels",
+  "subtitles.minecraftmod.hex_cast": "Scarlet magic crackles"
 }

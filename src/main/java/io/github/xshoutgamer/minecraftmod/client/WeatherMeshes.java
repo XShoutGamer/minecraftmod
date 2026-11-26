@@ -56,7 +56,7 @@ final class WeatherMeshes {
 
     static void impact(NailMesh mesh, float y, float age, float time, int crater, int quality) {
         float radius = Math.max(crater * 3F, CelestiaConfig.BLAST_RADIUS.get());
-        int sides = quality == 0 ? 44 : quality == 1 ? 64 : quality <= 3 ? 112 : 152;
+        int sides = quality >= 6 ? 242 : quality == 0 ? 44 : quality == 1 ? 64 : quality <= 3 ? 112 : 152;
         if (age > 0 && age < 24) {
             float front = ImpactShockwave.reach(age);
             float fade = 1 - Mth.clamp((age - 14) / 10, 0, 1);
@@ -105,7 +105,7 @@ final class WeatherMeshes {
     }
 
     static void star(NailMesh mesh, float y, float reach, float time, float alpha, int quality, boolean skyward) {
-        int rays = quality == 0 ? 15 : quality <= 2 ? 30 : 45;
+        int rays = quality >= 6 ? 92 : quality == 0 ? 15 : quality <= 2 ? 30 : 45;
         Point origin = new Point(0, y, 0);
         mesh.diamond(0, y - 2.4F, 0, 2.6F, 5.3F, time * 0.09, WHITE, alpha * 0.89F);
         mesh.diamond(0, y - 6.5F, 0, 4.5F, 13.8F, -time * 0.04, BLUE, alpha * 0.32F);
