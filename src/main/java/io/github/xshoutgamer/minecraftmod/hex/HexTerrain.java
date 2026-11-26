@@ -100,6 +100,21 @@ public final class HexTerrain extends SavedData {
 
     boolean full() { return changes.size() >= HexConfig.restorationRecordLimit(); }
 
+    int keep(UUID owner, BlockPos center, int radius, boolean confirm) {
+        int count = 0;
+        double radiusSquared = (double) radius * radius;
+        var entries = changes.entrySet().iterator();
+        while (entries.hasNext()) {
+            var entry = entries.next();
+            if (!entry.getValue().owner.equals(owner)
+                    || (radius > 0 && entry.getKey().distSqr(center) > radiusSquared)) continue;
+            count++;
+            if (confirm) entries.remove();
+        }
+        if (confirm && count > 0) setDirty();
+        return count;
+    }
+
     static Deque<BlockPos> volume(BlockPos center, int radius, HexConfig.Volume shape) {
         if (shape == HexConfig.Volume.TERRAIN) return patch(center, radius);
         double inner = HexConfig.CORRUPTION_INNER.get(), middle = HexConfig.CORRUPTION_MIDDLE.get(), edge = HexConfig.CORRUPTION_EDGE.get();

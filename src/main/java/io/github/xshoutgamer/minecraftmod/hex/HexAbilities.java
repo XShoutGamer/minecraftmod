@@ -268,7 +268,7 @@ final class HexAbilities {
                 var center = hit.getBlockPos();
                 restoring = HexConfig.REWRITE.get() == HexConfig.Rewrite.NATURAL;
                 if (!restoring && journal.full()) {
-                    feedback(player, "Reality Rewrite stopped because undo storage is full. Aim Genesis at earlier corrupted terrain to restore blocks and free space.");
+                    feedback(player, "Undo storage is full. Use Genesis to restore earlier edits, or /hexterrain keep <radius> to keep them and free space.");
                     return;
                 }
                 workShape = HexConfig.VOLUME_SHAPE.get();
@@ -424,7 +424,7 @@ final class HexAbilities {
                     String result = !restoring && changedBlocks == 0
                             ? "Reality Rewrite found no eligible blocks. Try unmodified stone, soil, or wood."
                             : (restoring ? "Restored " : "Reality Rewrite changed ") + changedBlocks + " blocks.";
-                    if (!restoring && journal.full()) result += " Undo storage is full. Genesis frees space by restoring earlier edits.";
+                    if (!restoring && journal.full()) result += " Undo storage is full. Use Genesis or /hexterrain keep <radius> to free space.";
                     if (HexConfig.DEBUG.get() && !restoring) result += " Scanned " + scannedBlocks + " positions.";
                     feedback(player, result);
                 }
