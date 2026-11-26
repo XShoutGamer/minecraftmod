@@ -52,7 +52,7 @@ final class HexAbilities {
     private long echoEnd;
     private Deque<BlockPos> terrainWork;
     private boolean restoring, reportWork;
-    private Vec3 corruptionCenter;
+    private Vec3 waveOrigin;
     private HexConfig.Volume workShape;
     private BlockPos workCenter;
     private long workStart;
@@ -60,7 +60,7 @@ final class HexAbilities {
     private record Sapped(Mob mob, long expiry, float damage) {}
     private final java.util.List<Sapped> sapped = new java.util.ArrayList<>();
     private int corruptionRadius;
-    private long corruptionStart;
+    private int waveDuration;
     private final java.util.Set<java.util.UUID> corrupted = new java.util.HashSet<>();
     private int changedBlocks;
     boolean ascended;
@@ -194,6 +194,10 @@ final class HexAbilities {
                         feedback(player, "Genesis requires the world owner or a server operator.");
                         return;
                     }
+                    if (terrainWork != null) {
+                        feedback(player, "Wait for your current terrain spell to finish.");
+                        return;
+                    }
                     terrainWork = HexTerrain.get(player.serverLevel()).restoration(player.getUUID(), BlockPos.containing(target), HexConfig.GENESIS_RADIUS.get() * domain.scale());
                     if (terrainWork.isEmpty()) {
                         terrainWork = null;
@@ -281,13 +285,11 @@ final class HexAbilities {
                 scannedBlocks = 0;
                 reportWork = true;
                 changedBlocks = 0;
-                scene(player, spell, 0, eye, hit.getLocation(), now, Math.max(68, radius * 5), radius);
-                if (!restoring) {
-                    corruptionCenter = Vec3.atCenterOf(center);
-                    corruptionRadius = radius;
-                    corruptionStart = now;
-                    corrupted.clear();
-                }
+                waveOrigin = eye;
+                corruptionRadius = radius;
+                waveDuration = Math.max(68, radius * 5);
+                corrupted.clear();
+                sendRewriteWave(player, now, 1, false);
             }
             case ORB -> {
                 orb = eye;
@@ -376,20 +378,18 @@ final class HexAbilities {
                 if (eligible(player, mark.mob)) mark.mob.hurt(player.damageSources().indirectMagic(player, player), mark.damage);
             }
         }
-        if (corruptionCenter != null && domain.gameplay()) {
-            float front = Math.min(corruptionRadius, (now - corruptionStart) / 5F + 1);
-            applyCorruption(player, corruptionCenter, front, now);
-            if (front >= corruptionRadius) corruptionCenter = null;
-        }
         if (terrainWork != null && domain.gameplay()) {
             var journal = HexTerrain.get(level);
             int budget = HexConfig.EDITS.get();
             int edits = 0;
             int scanLimit = restoring ? budget : budget * 12;
+            boolean wave = waveOrigin != null;
+            var shape = restoring ? HexConfig.Volume.SPHERE : workShape;
+            float scheduledRadius = wave ? rewriteFront(corruptionRadius, waveDuration, now - workStart) : 0;
             Vec3 changedAt = null;
             for (int i = 0; i < scanLimit && edits < budget && !terrainWork.isEmpty(); i++) {
                 var pos = terrainWork.getFirst();
-                if (!restoring && HexTerrain.distance(workCenter, pos, workShape) > (now - workStart) / 5F + 1) break;
+                if (wave && Math.ceil(HexTerrain.distance(workCenter, pos, shape)) > scheduledRadius) break;
                 terrainWork.removeFirst();
                 scannedBlocks++;
                 int change = restoring ? (journal.restore(player, pos) ? 1 : 0)
@@ -405,9 +405,21 @@ final class HexAbilities {
             }
             changedBlocks += edits;
             if (!restoring && changedAt != null && now % 4 == 0) {
-                scene(player, PersonalMagic.DISSOLVE_FX, 3, changedAt.add(0,-.8,0), changedAt, now, 14, 1.4F);
+                scene(player, PersonalMagic.DISSOLVE_FX, 3, changedAt.add(0,-.8,0), changedAt, now, HexNetwork.REWRITE_WAVE_TIMEOUT, 1.4F);
             }
-            if (terrainWork.isEmpty() || !restoring && journal.full()) {
+            boolean full = !restoring && journal.full();
+            boolean done = full || (terrainWork.isEmpty() && (!wave || now - workStart >= waveDuration));
+            if (wave) {
+                // If the tick budget runs out mid-shell, the visible front waits for that shell.
+                float front = scheduledRadius;
+                if (!terrainWork.isEmpty()) {
+                    double nextShell = Math.ceil(HexTerrain.distance(workCenter, terrainWork.getFirst(), shape));
+                    if (nextShell <= scheduledRadius) front = Math.max(1, (float) nextShell - 1);
+                }
+                if (!restoring && !full) applyCorruption(player, Vec3.atCenterOf(workCenter), front, now);
+                if (done || (now - workStart) % 2 == 0) sendRewriteWave(player, now, front, done);
+            }
+            if (done) {
                 if (reportWork) {
                     String result = !restoring && changedBlocks == 0
                             ? "Reality Rewrite found no eligible blocks. Try unmodified stone, soil, or wood."
@@ -417,6 +429,7 @@ final class HexAbilities {
                     feedback(player, result);
                 }
                 terrainWork = null;
+                waveOrigin = null;
                 reportWork = false;
                 changedBlocks = 0;
             }
@@ -578,12 +591,21 @@ final class HexAbilities {
         return (int) Math.round(6 + (HexConfig.rewriteRadius() - 6) * Math.pow(t, 1.22));
     }
 
+    static float rewriteFront(int radius, int duration, long elapsed) {
+        return 1 + (radius - 1) * Math.clamp(elapsed / (float) duration, 0, 1);
+    }
+
+    private void sendRewriteWave(ServerPlayer player, long now, float radius, boolean done) {
+        scene(player, HexSpell.REWRITE, done ? HexNetwork.REWRITE_FADE : HexNetwork.REWRITE_WAVE,
+                waveOrigin, Vec3.atCenterOf(workCenter), now, HexNetwork.REWRITE_WAVE_TIMEOUT, radius);
+    }
+
     private void applyCorruption(ServerPlayer player, Vec3 at, float radius, long now) {
         for (var mob : player.level().getEntitiesOfClass(Mob.class, new AABB(at, at).inflate(radius),
                 entity -> eligible(player, entity) && !player.isAlliedTo(entity)
                         && !(entity instanceof net.minecraft.world.entity.TamableAnimal pet && pet.isOwnedBy(player))
                         && (!HexConfig.CORRUPTION_HOSTILE.get() || entity instanceof Enemy)
-                        && HexTerrain.distance(BlockPos.containing(at), entity.blockPosition(), HexConfig.VOLUME_SHAPE.get()) < radius)) {
+                        && HexTerrain.distance(workCenter, entity.blockPosition(), workShape) <= radius)) {
             if (!corrupted.add(mob.getUUID())) continue;
             float damage = HexConfig.CORRUPTION_DAMAGE.get().floatValue();
             if (HexConfig.CORRUPTION_FALLOFF.get()) damage *= Math.max(0, 1 - playerDistance(at, mob) / corruptionRadius);
@@ -706,7 +728,7 @@ final class HexAbilities {
         orb = null;
         echoPosition = null;
         terrainWork = null;
-        corruptionCenter = null;
+        waveOrigin = null;
         corrupted.clear();
         sapped.clear();
         ascended = false;

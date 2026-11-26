@@ -345,9 +345,10 @@ final class HexRenderer {
                         glyph(light, .18F, Math.min(2.5F, r * .3F), time * .028F, 6, .56F, false);
                         break;
                     }
-                    float radius = kind == 7 ? Math.max(1, Math.min(r, ticks / 5 + 1))
-                            : r * Math.max(.12F, Mth.clamp(ticks / 21, 0, 1));
-                    if (kind == 7) {
+                    boolean rewrite = kind == 6 + HexSpell.REWRITE.ordinal();
+                    float radius = rewrite ? r : r * Math.max(.12F, Mth.clamp(ticks / 21, 0, 1));
+                    if (scene.variant() == HexNetwork.REWRITE_WAVE) alpha = 1;
+                    if (rewrite) {
                         for (int ring = 0; ring < 3; ring++) {
                             pose.pushPose();
                             pose.mulPose(Axis.YP.rotation((float) (ring * TURN / 3 + time * .005F)));

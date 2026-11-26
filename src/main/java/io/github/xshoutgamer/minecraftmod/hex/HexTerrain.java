@@ -118,7 +118,7 @@ public final class HexTerrain extends SavedData {
                     double fraction = distance / radius;
                     double coverage = fraction < .55 ? inner : fraction < .83 ? middle : edge;
                     if (Math.floorMod(Long.hashCode(pos.asLong() * 0x9e3779b97f4a7c15L), 1000) >= coverage * 1000) continue;
-                    shells.get((int) distance).add(pos);
+                    shells.get((int) Math.ceil(distance)).add(pos);
                 }
             }
         }

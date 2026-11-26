@@ -19,6 +19,9 @@ public final class HexNetwork {
     public static final int AWAKENING = 0, EXPANDING = 1, ACTIVE = 2, ENHANCED = 3, COLLAPSING = 4;
     public static final int HAND_FX = 20, ORB_FX = 21, BARRIER_FX = 22, RUNE_FX = 23;
 
+    public static final int REWRITE_WAVE = 2, REWRITE_FADE = 3;
+    public static final int REWRITE_WAVE_TIMEOUT = 8;
+
     private HexNetwork() {}
 
     public static void register(PayloadRegistrar registrar) {

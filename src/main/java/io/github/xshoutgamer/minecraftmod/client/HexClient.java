@@ -110,7 +110,9 @@ public final class HexClient {
             LAST_SEEN.put(scene.owner(), world.getGameTime());
         } else {
             long instance = scene.kind() == HexNetwork.RUNE_FX || scene.kind() == HexNetwork.ORB_FX || scene.kind() == PersonalMagic.MEMORY_FX ? scene.start() ^ scene.target().hashCode() : 0;
-            EFFECTS.put(new EffectKey(scene.owner(), scene.kind(), scene.variant(), instance), scene);
+            int variant = scene.kind() == 6 + HexSpell.REWRITE.ordinal() && scene.variant() == HexNetwork.REWRITE_FADE
+                    ? HexNetwork.REWRITE_WAVE : scene.variant();
+            EFFECTS.put(new EffectKey(scene.owner(), scene.kind(), variant, instance), scene);
             if (EFFECTS.size() > 960) EFFECTS.pollFirstEntry();
         }
     }
