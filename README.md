@@ -50,9 +50,23 @@ The Orb defaults to an 8–15 block blast, or 25 blocks during Scarlet World. Pl
 - Tap **J** to summon or dismiss the Darkhold. While it is summoned, hold **J** to open the grimoire. Click a spell, then press and release **K** to cast, or hold **K** for extra power. Crouch while casting Memory of Reality to restore a bounded batch of your recorded changes.
 - Darkhold spells include an anchored Dreamwalker flight, Abyssal Portal teleportation, orbiting Forbidden Guardians, a local Eternal Eclipse, Mirror Reality illusions, Void Singularity pull, an Astral Library sanctuary, Dimensional Prison for hostile mobs, Memory of Reality, and The Forbidden Scripture range boost.
 
-The default Reality Rewrite shape is a sphere. Set `rewriteVolume` to `CYLINDER`, `TERRAIN`, or `CUBE` for other shapes. Hold the spell to increase its radius from 4 blocks up to 40 blocks within `rewriteChargeTicks` by default. Set `rewriteVolumeMaxRadius` to override it. A customized legacy radius is honored when the new setting is zero. The Scarlet palette blackens logs and planks, removes foliage, and adds animated Scarlet-Fractured Stone. Mob corruption is separately configurable. Edits run in batches and stop at the per-dimension restoration journal limit.
+The default Reality Rewrite shape is a sphere. Set `rewriteVolume` to `CYLINDER`, `TERRAIN`, or `CUBE` for other shapes. Hold the spell to increase its radius from 6 blocks up to 60 blocks within `rewriteChargeTicks` by default. Set `rewriteVolumeMaxRadius` to override it. A customized legacy radius is honored when the new setting is zero. The Scarlet palette blackens logs and planks, removes foliage, and adds animated Scarlet-Fractured Stone. Mob corruption is separately configurable. Edits run in batches and stop at the per-dimension restoration journal limit.
 
 Dreamwalker uses the player's existing avatar and returns it to an anchor if safe. The library and Mirror Reality use visual geometry. Memory of Reality previews recorded locations with spectral markers. Guardians are server-controlled projections. Container block entities are protected, and exact reconstruction requires previously recorded edits.
+
+### Darkhold field actions
+
+Keep the spell selected after casting with **K**, then use **U** for its field action. You can rebind **U** in Minecraft Controls.
+
+| Spell | Gameplay |
+| --- | --- |
+| Eternal Eclipse | Creates a local darkness field with hostile-mob pulses, personal healing and speed, damage reduction, projectile interception, and increased independent spell reach. **U** performs Shadow Passage to a safe point in the field. |
+| Mirror Reality | Creates a field in the current dimension. It reflects approaching projectiles near the caster. **U** links the origin to a safe targeted landing spot. Walk into a gate to travel. **Crouch + U** places temporary solid platforms where terrain edits are permitted. |
+| Void Singularity | Hold **K** to increase pull radius and damage. Its field pulls mobs, items, and supported projectiles. Hostile mobs take repeated damage near the core. |
+| Astral Library | Creates a sanctuary with a temporary placement-permitted platform, healing, and defense. **U** opens the altar for reach, duration, recovery, or restoration attunements. **Crouch + U** restores nearby journaled blocks. |
+| Forbidden Scripture | Manifests four formations for Dominion damage and slowing, Protection, Transcendence flight and speed, and Creation platforms with **U**. The default duration is 60 seconds before charge and attunement bonuses. |
+
+Reality Rewrite propagates from the cast center through its selected volume. Configure inner, middle, and edge coverage and initial or periodic mob damage in `minecraftmod-hex-server.toml`. The Scarlet palette uses custom blackened wood, planks, soil, sand, bricks, and stone. It physically removes eligible foliage within the cast and journals the changed positions for Genesis. Canopies are selected by position and block tags. Blocks outside the cast keep their foliage, and inventories and unrecorded changes stay outside Genesis's journal. Temporary platforms use saved block ticks for expiration.
 
 ## Configuration
 

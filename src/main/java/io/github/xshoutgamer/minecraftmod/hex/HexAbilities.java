@@ -53,6 +53,12 @@ final class HexAbilities {
     private Deque<BlockPos> terrainWork;
     private boolean restoring, reportWork;
     private Vec3 corruptionCenter;
+    private HexConfig.Volume workShape;
+    private BlockPos workCenter;
+    private long workStart;
+    private int scannedBlocks;
+    private record Sapped(Mob mob, long expiry, float damage) {}
+    private final java.util.List<Sapped> sapped = new java.util.ArrayList<>();
     private int corruptionRadius;
     private long corruptionStart;
     private final java.util.Set<java.util.UUID> corrupted = new java.util.HashSet<>();
@@ -238,8 +244,12 @@ final class HexAbilities {
                 if (domain.gameplay() && HexTerrain.canRewrite(player)) {
                     var center = BlockPos.containing(target.add(0, -.03, 0));
                     restoring = HexConfig.REWRITE.get() == HexConfig.Rewrite.NATURAL;
+                    workShape = HexConfig.VOLUME_SHAPE.get();
+                    workCenter = center;
+                    workStart = now;
+                    scannedBlocks = 0;
                     terrainWork = restoring ? HexTerrain.get(player.serverLevel()).restoration(player.getUUID(), center, radius)
-                            : HexTerrain.volume(center, radius, HexConfig.VOLUME_SHAPE.get());
+                            : HexTerrain.volume(center, radius, workShape);
                     if (terrainWork.isEmpty()) {
                         terrainWork = null;
                         feedback(player, "Natural Restoration found no recorded changes in this patch.");
@@ -333,6 +343,12 @@ final class HexAbilities {
                 changedBlocks = 0;
             }
         }
+        if (domain.gameplay() && now % 20 == 0) {
+            sapped.removeIf(mark -> !mark.mob.isAlive() || mark.mob.level() != level || now >= mark.expiry);
+            for (var mark : sapped) {
+                if (eligible(player, mark.mob)) mark.mob.hurt(player.damageSources().indirectMagic(player, player), mark.damage);
+            }
+        }
         if (corruptionCenter != null && domain.gameplay()) {
             float front = Math.min(corruptionRadius, (now - corruptionStart) / 5F + 1);
             applyCorruption(player, corruptionCenter, front, now);
@@ -345,9 +361,12 @@ final class HexAbilities {
             int scanLimit = restoring ? budget : budget * 12;
             Vec3 changedAt = null;
             for (int i = 0; i < scanLimit && edits < budget && !terrainWork.isEmpty(); i++) {
-                var pos = terrainWork.removeFirst();
+                var pos = terrainWork.getFirst();
+                if (!restoring && HexTerrain.distance(workCenter, pos, workShape) > (now - workStart) / 5F + 1) break;
+                terrainWork.removeFirst();
+                scannedBlocks++;
                 int change = restoring ? (journal.restore(player, pos) ? 1 : 0)
-                        : HexConfig.VOLUME_SHAPE.get() == HexConfig.Volume.TERRAIN
+                        : workShape == HexConfig.Volume.TERRAIN
                         ? journal.rewrite(player, pos) : journal.rewriteBlock(player, pos);
                 if (change > 0) {
                     edits += change;
@@ -359,7 +378,8 @@ final class HexAbilities {
                 scene(player, PersonalMagic.DISSOLVE_FX, 3, changedAt.add(0,-.8,0), changedAt, now, 14, 1.4F);
             }
             if (terrainWork.isEmpty() || !restoring && journal.full()) {
-                if (reportWork) feedback(player, (restoring ? "Genesis restored " : "Reality Rewrite changed ") + changedBlocks + " blocks.");
+                if (reportWork) feedback(player, (restoring ? "Genesis restored " : "Reality Rewrite changed ") + changedBlocks + " blocks."
+                        + (HexConfig.DEBUG.get() && !restoring ? " Scanned " + scannedBlocks + (journal.full() ? " · journal full." : ".") : ""));
                 terrainWork = null;
                 reportWork = false;
                 changedBlocks = 0;
@@ -519,7 +539,7 @@ final class HexAbilities {
 
     private static int rewriteRadius(long ticks) {
         double t = Math.clamp(ticks / (double) HexConfig.REWRITE_CHARGE.get(), 0, 1);
-        return (int) Math.round(4 + (HexConfig.rewriteRadius() - 4) * Math.pow(t, 1.25));
+        return (int) Math.round(6 + (HexConfig.rewriteRadius() - 6) * Math.pow(t, 1.22));
     }
 
     private void applyCorruption(ServerPlayer player, Vec3 at, float radius, long now) {
@@ -527,7 +547,7 @@ final class HexAbilities {
                 entity -> eligible(player, entity) && !player.isAlliedTo(entity)
                         && !(entity instanceof net.minecraft.world.entity.TamableAnimal pet && pet.isOwnedBy(player))
                         && (!HexConfig.CORRUPTION_HOSTILE.get() || entity instanceof Enemy)
-                        && entity.distanceToSqr(at) < radius * radius)) {
+                        && HexTerrain.distance(BlockPos.containing(at), entity.blockPosition(), HexConfig.VOLUME_SHAPE.get()) < radius)) {
             if (!corrupted.add(mob.getUUID())) continue;
             float damage = HexConfig.CORRUPTION_DAMAGE.get().floatValue();
             if (HexConfig.CORRUPTION_FALLOFF.get()) damage *= Math.max(0, 1 - playerDistance(at, mob) / corruptionRadius);
@@ -536,9 +556,13 @@ final class HexAbilities {
             if (duration > 0) {
                 mob.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, duration, 1));
                 mob.addEffect(new MobEffectInstance(MobEffects.GLOWING, duration, 0));
+                float periodic = HexConfig.CORRUPTION_PERIODIC.get().floatValue();
+                if (periodic > 0 && sapped.size() < 128 && sapped.stream().noneMatch(mark -> mark.mob == mob)) {
+                    sapped.add(new Sapped(mob, now + duration, periodic));
+                }
             }
             var glow = mob.getBoundingBox().getCenter();
-            scene(player, PersonalMagic.DISSOLVE_FX, 4, glow.add(0,-1,0), glow, now, 22, 1);
+            scene(player, PersonalMagic.DISSOLVE_FX, 4, glow, at.add(0,1,0), now, 22, 1);
         }
     }
 
@@ -645,6 +669,7 @@ final class HexAbilities {
         terrainWork = null;
         corruptionCenter = null;
         corrupted.clear();
+        sapped.clear();
         ascended = false;
         resetFlight(player);
     }

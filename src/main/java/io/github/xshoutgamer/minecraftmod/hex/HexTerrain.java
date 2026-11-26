@@ -102,6 +102,7 @@ public final class HexTerrain extends SavedData {
 
     static Deque<BlockPos> volume(BlockPos center, int radius, HexConfig.Volume shape) {
         if (shape == HexConfig.Volume.TERRAIN) return patch(center, radius);
+        double inner = HexConfig.CORRUPTION_INNER.get(), middle = HexConfig.CORRUPTION_MIDDLE.get(), edge = HexConfig.CORRUPTION_EDGE.get();
         var shells = new ArrayList<Deque<BlockPos>>(radius + 1);
         for (int i = 0; i <= radius; i++) shells.add(new ArrayDeque<>());
         for (int x = -radius; x <= radius; x++) {
@@ -114,8 +115,9 @@ public final class HexTerrain extends SavedData {
                     };
                     if (distance > radius) continue;
                     var pos = center.offset(x, y, z);
-                    if (shape != HexConfig.Volume.CUBE && distance > radius * .87
-                            && Math.floorMod(Long.hashCode(pos.asLong() * 0x9e3779b97f4a7c15L), 11) < 2) continue;
+                    double fraction = distance / radius;
+                    double coverage = fraction < .55 ? inner : fraction < .83 ? middle : edge;
+                    if (Math.floorMod(Long.hashCode(pos.asLong() * 0x9e3779b97f4a7c15L), 1000) >= coverage * 1000) continue;
                     shells.get((int) distance).add(pos);
                 }
             }
@@ -159,6 +161,17 @@ public final class HexTerrain extends SavedData {
         return new ArrayDeque<>(positions);
     }
 
+    static double distance(BlockPos center, BlockPos pos, HexConfig.Volume shape) {
+        int x = Math.abs(pos.getX() - center.getX()), y = Math.abs(pos.getY() - center.getY());
+        int z = Math.abs(pos.getZ() - center.getZ());
+        return switch (shape) {
+            case SPHERE -> Math.sqrt(center.distSqr(pos));
+            case CYLINDER -> Math.max(y, Math.hypot(x, z));
+            case CUBE -> Math.max(y, Math.max(x, z));
+            case TERRAIN -> Math.hypot(x, z);
+        };
+    }
+
     int rewrite(ServerPlayer player, BlockPos column) {
         var level = player.serverLevel();
         if (!canRewrite(player) || !level.hasChunkAt(column)
@@ -193,19 +206,22 @@ public final class HexTerrain extends SavedData {
         boolean logs = before.is(net.minecraft.tags.BlockTags.LOGS);
         boolean planks = before.is(net.minecraft.tags.BlockTags.PLANKS);
         boolean foliage = before.is(net.minecraft.tags.BlockTags.LEAVES) || before.is(net.minecraft.tags.BlockTags.FLOWERS)
-                || before.is(Blocks.SHORT_GRASS) || before.is(Blocks.TALL_GRASS);
+                || before.is(Blocks.SHORT_GRASS) || before.is(Blocks.FERN) || before.is(Blocks.DEAD_BUSH)
+                || before.is(net.minecraft.tags.BlockTags.SAPLINGS);
         boolean masonry = before.is(Blocks.STONE_BRICKS) || before.is(Blocks.BRICKS) || before.is(Blocks.DEEPSLATE_BRICKS)
                 || before.is(Blocks.POLISHED_ANDESITE) || before.is(Blocks.QUARTZ_BLOCK) || before.is(Blocks.SANDSTONE);
         if (!stone && !dirt && !sand && !logs && !planks && !foliage && !masonry) return null;
         if (HexConfig.REWRITE.get() == HexConfig.Rewrite.SCARLET) {
-            if (logs) return Blocks.STRIPPED_DARK_OAK_LOG.defaultBlockState().setValue(
+            if (logs) return io.github.xshoutgamer.minecraftmod.CelestialBlocks.BLIGHT_LOG.get().defaultBlockState().setValue(
                     net.minecraft.world.level.block.RotatedPillarBlock.AXIS,
                     before.hasProperty(net.minecraft.world.level.block.RotatedPillarBlock.AXIS)
                             ? before.getValue(net.minecraft.world.level.block.RotatedPillarBlock.AXIS) : Direction.Axis.Y);
-            if (planks) return Blocks.DARK_OAK_PLANKS.defaultBlockState();
+            if (planks) return io.github.xshoutgamer.minecraftmod.CelestialBlocks.BLIGHT_PLANKS.get().defaultBlockState();
             if (foliage) return Blocks.AIR.defaultBlockState();
-            if (masonry) return Blocks.POLISHED_BLACKSTONE_BRICKS.defaultBlockState();
-            return (stone ? io.github.xshoutgamer.minecraftmod.CelestialBlocks.SCARLET_STONE.get() : dirt ? Blocks.CRIMSON_NYLIUM : Blocks.RED_TERRACOTTA).defaultBlockState();
+            if (masonry) return io.github.xshoutgamer.minecraftmod.CelestialBlocks.BLIGHT_BRICKS.get().defaultBlockState();
+            return (stone ? io.github.xshoutgamer.minecraftmod.CelestialBlocks.SCARLET_STONE.get()
+                    : dirt ? io.github.xshoutgamer.minecraftmod.CelestialBlocks.BLIGHT_SOIL.get()
+                    : io.github.xshoutgamer.minecraftmod.CelestialBlocks.BLIGHT_SAND.get()).defaultBlockState();
         }
         var block = switch (HexConfig.REWRITE.get()) {
             case SCARLET -> stone ? Blocks.AMETHYST_BLOCK : dirt ? Blocks.OBSIDIAN : Blocks.RED_STAINED_GLASS;

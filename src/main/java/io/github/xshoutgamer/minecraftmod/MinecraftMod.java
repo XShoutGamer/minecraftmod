@@ -49,6 +49,8 @@ public final class MinecraftMod {
     public static final DeferredHolder<SoundEvent, SoundEvent> HEX_EXPAND = sound("hex_expand");
     public static final DeferredHolder<SoundEvent, SoundEvent> HEX_HUM = sound("hex_hum");
     public static final DeferredHolder<SoundEvent, SoundEvent> HEX_COLLAPSE = sound("hex_collapse");
+    public static final DeferredHolder<SoundEvent, SoundEvent> ECLIPSE_SOUND = sound("eclipse_formation");
+    public static final DeferredHolder<SoundEvent, SoundEvent> VOID_SOUND = sound("singularity_collapse");
     public static final DeferredHolder<SoundEvent, SoundEvent> DARKHOLD_SOUND = sound("darkhold_cast");
     public static final DeferredHolder<SoundEvent, SoundEvent> CHAOS_SOUND = sound("chaos_dissolve");
     public static final DeferredHolder<SoundEvent, SoundEvent> HEX_CAST = sound("hex_cast");

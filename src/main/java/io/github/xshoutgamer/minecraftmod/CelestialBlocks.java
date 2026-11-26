@@ -23,6 +23,23 @@ public final class CelestialBlocks {
             BlockBehaviour.Properties.of().strength(2.8F, 7).sound(SoundType.DEEPSLATE)
                     .lightLevel(state -> 4).noLootTable()));
 
+    public static final DeferredBlock<Block> ARCANE_PLATFORM = BLOCKS.register("arcane_platform", () ->
+            new io.github.xshoutgamer.minecraftmod.hex.ArcanePlatform(BlockBehaviour.Properties.of()
+                    .strength(1.4F).lightLevel(state -> 8).sound(SoundType.AMETHYST).noLootTable()));
+
+    public static final DeferredBlock<Block> BLIGHT_LOG = BLOCKS.register("blight_log", () ->
+            new net.minecraft.world.level.block.RotatedPillarBlock(BlockBehaviour.Properties.of()
+                    .strength(2).sound(SoundType.WOOD).lightLevel(state -> 2).noLootTable()));
+    public static final DeferredBlock<Block> BLIGHT_PLANKS = corruption("blight_planks", SoundType.WOOD);
+    public static final DeferredBlock<Block> BLIGHT_SOIL = corruption("blight_soil", SoundType.GRAVEL);
+    public static final DeferredBlock<Block> BLIGHT_SAND = corruption("blight_sand", SoundType.SAND);
+    public static final DeferredBlock<Block> BLIGHT_BRICKS = corruption("blight_bricks", SoundType.DEEPSLATE);
+
+    private static DeferredBlock<Block> corruption(String id, SoundType sound) {
+        return BLOCKS.register(id, () -> new Block(BlockBehaviour.Properties.of()
+                .strength(2).sound(sound).lightLevel(state -> 2).noLootTable()));
+    }
+
     private CelestialBlocks() {}
 
     private static DeferredBlock<Block> stone(String name, int light, SoundType sound) {

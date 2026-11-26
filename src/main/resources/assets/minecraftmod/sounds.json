@@ -184,5 +184,17 @@
     "sounds": [
       "minecraftmod:scarlet/chaos_dissolve"
     ]
+  },
+  "eclipse_formation": {
+    "subtitle": "subtitles.minecraftmod.eclipse_formation",
+    "sounds": [
+      "minecraftmod:scarlet/eclipse_formation"
+    ]
+  },
+  "singularity_collapse": {
+    "subtitle": "subtitles.minecraftmod.singularity_collapse",
+    "sounds": [
+      "minecraftmod:scarlet/singularity_collapse"
+    ]
   }
 }

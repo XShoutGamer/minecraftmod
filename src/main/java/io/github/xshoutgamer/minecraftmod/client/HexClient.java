@@ -95,6 +95,10 @@ public final class HexClient {
     public static void receive(HexNetwork.Scene scene) {
         checkWorld();
         if (world == null || !world.dimension().location().equals(scene.dimension())) return;
+        if (scene.kind() == PersonalMagic.ALTAR_FX) {
+            Minecraft.getInstance().setScreen(new AstralAltar(PersonalMagic.Attunement.values()[scene.variant()]));
+            return;
+        }
         if (scene.kind() == PersonalMagic.BOOK_CLOSED) {
             EFFECTS.keySet().removeIf(key -> key.owner().equals(scene.owner()) && (key.kind() == PersonalMagic.BOOK_FX
                     || key.kind() == PersonalMagic.GUARDIAN_FX || key.kind() == PersonalMagic.POWER_FX

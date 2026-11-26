@@ -25,7 +25,7 @@ public final class HexNetwork {
         var optional = registrar.optional();
         optional.playToServer(Input.TYPE, Input.CODEC, (packet, context) -> {
             if (context.player() instanceof ServerPlayer player) {
-                if (packet.action() >= PersonalMagic.QUICK && packet.action() <= PersonalMagic.GRIMOIRE_RELEASE) PersonalMagic.input(player, packet);
+                if (packet.action() >= PersonalMagic.QUICK && packet.action() <= PersonalMagic.LIBRARY_SELECT) PersonalMagic.input(player, packet);
                 else HexDomains.input(player, packet);
             }
         });

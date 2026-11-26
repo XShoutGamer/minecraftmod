@@ -48,5 +48,14 @@
   "key.minecraftmod.darkhold_cast": "Cast Darkhold spell",
   "block.minecraftmod.scarlet_stone": "Scarlet-Fractured Stone",
   "subtitles.minecraftmod.darkhold_cast": "The Darkhold whispers",
-  "subtitles.minecraftmod.chaos_dissolve": "Chaos magic curls inward"
+  "subtitles.minecraftmod.chaos_dissolve": "Chaos magic curls inward",
+  "key.minecraftmod.darkhold_secondary": "Darkhold spell action",
+  "block.minecraftmod.arcane_platform": "Temporary Arcane Platform",
+  "block.minecraftmod.blight_log": "Blackened Trunk",
+  "block.minecraftmod.blight_planks": "Withered Planks",
+  "block.minecraftmod.blight_soil": "Withered Soil",
+  "block.minecraftmod.blight_sand": "Ashen Sand",
+  "block.minecraftmod.blight_bricks": "Scarlet Engraved Bricks",
+  "subtitles.minecraftmod.eclipse_formation": "The eclipse gathers",
+  "subtitles.minecraftmod.singularity_collapse": "The singularity folds inward"
 }

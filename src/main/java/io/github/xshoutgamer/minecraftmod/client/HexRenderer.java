@@ -446,7 +446,33 @@ final class HexRenderer {
             light.diamond(0, .67F, 0, .34F, .71F, time * .04F, 0xea493f, .7F);
             glyph(light, .6F, .57F, time * .044F, 5, .76F, true);
             smoke(at, .72F, 1.1F, .59F, .39F, .74F);
+        } else if (scene.kind() == PersonalMagic.SHADOW_FX) {
+            float fade = 1 - progress;
+            if (scene.variant() == 1) arc(light, dark, from, Vec3.ZERO, eye, time, strands(8), 2.3, 6);
+            if (scene.variant() == 2) {
+                glyph(light, 0, radius * (.5F + progress * .86F), time * .036F, 6, fade * .86F, true);
+                glyph(light, .08F, radius * (.42F + progress), -time * .026F, 8, fade, false);
+            }
+            dark.section(0, 0, 0, radius * (1 + progress), radius * .34F, radius * .17F,
+                    9, time * .052, 0x190a1e, 0x08030d, fade * .82F);
+            glyph(light, radius * .66F, radius * .54F, time * .09F, 5, fade, true);
+            motes(light, count(37, HexConfig.DENSITY.get()), radius, radius * 1.7F, time, fade, 1);
+            smoke(at.add(0, radius * .55F, 0), radius, radius * 1.4F, fade * .70F, .3F, .76F);
+        } else if (scene.kind() == PersonalMagic.SCRIPTURE_FX) {
+            int formation = scene.variant();
+            float height = radius * (.7F + formation * .17F);
+            glyph(light, height * .32F, radius * .63F, time * (.043F + formation * .008F), 5 + formation, .93F, true);
+            glyph(light, -.25F, radius * .74F, -time * .038F, 8 + formation, .69F, false);
+            dark.section(0, -.42F, 0, height, .46F, .14F, 5 + formation, time * .02, 0x48233e, BLACK, .78F);
+            arc(light, dark, from.add(0,1,0), new Vec3(0,height*.38,0), eye, time, strands(4), .82, formation);
+            motes(light,count(47,HexConfig.DENSITY.get()), radius, height * 1.4F, time, .76F, 1);
         } else if (scene.kind() == PersonalMagic.ACTIVATE_FX) {
+            if (scene.variant() == Power.VOID.ordinal()) {
+                groundRing(light, at, radius, eye, .62F);
+                glyph(light, .3F, radius * .58F, time * .029F, 8, .53F, false);
+                pose.popPose();
+                return;
+            }
             glyph(light, .2F, radius * 1.6F, time * .1F, 7, .68F, false);
             arc(light, dark, from, new Vec3(0,1.9,0), eye, time, strands(4), .61, scene.variant());
             smoke(at.add(0, .68, 0), radius * .76F, radius * 1.05F, .46F, .68F, .89F);
@@ -469,7 +495,23 @@ final class HexRenderer {
                 }
                 case ECLIPSE, VOID -> {
                     float y = power == Power.ECLIPSE ? 62 : 1.7F;
-                    float size = power == Power.ECLIPSE ? 17 : radius * .42F;
+                    float formation = smooth((float) (clock - scene.start()) / (power == Power.ECLIPSE ? 70 : 14));
+                    float size = (power == Power.ECLIPSE ? 24 : radius * .42F) * Math.max(.04F, formation) * fade;
+                    if (power == Power.VOID) {
+                        for (int i = 0; i < 6; i++) {
+                            light.ring(y + i * .34F, size * (1.14F + i * .35F), .12F + i * .03F,
+                                    time * (.056F + i * .012F), 112, 1 + i % 3, i % 2 == 0 ? 0xd43765 : 0x854dff, fade * .7F);
+                            var brink = polar(0, y + 6 + i % 2, 0, size * 2.9, i * 2.399963 + time * .019);
+                            arc(light, dark, brink, new Vec3(0,y,0), eye, time, 3, 2.8, i);
+                        }
+                        groundRing(light, at, radius, eye, fade * .38F);
+                    } else {
+                        for (int i = 0; i < 10; i++) {
+                            var edge = polar(0,y+Math.sin(i*4)*8,0,size*1.49,i*2.399963+time*.014);
+                            var lower = polar(0,3+i%4,0,radius*.37,i*2.399963-time*.006);
+                            arc(light,dark,lower,edge,eye,time,2, 4.4,i);
+                        }
+                    }
                     pose.pushPose();
                     pose.translate(0, y, 0);
                     pose.mulPose(camera.rotation());
@@ -503,8 +545,8 @@ final class HexRenderer {
                         pose.popPose();
                     }
                 }
-                case LIBRARY, SCRIPTURE -> {
-                    int books = power == Power.SCRIPTURE ? 11 : 7;
+                case LIBRARY -> {
+                    int books = 7;
                     for (int i = 0; i < books; i++) {
                         var point = polar(0, 2 + i % 4 * 1.5, 0, radius * .52, i * TURN / books + time * .013);
                         begin(at.add(point));
@@ -514,8 +556,22 @@ final class HexRenderer {
                         arc(light,dark,Vec3.ZERO,point,eye,time,2,1.24,i);
                     }
                     glyph(light, .3F, radius, time * .012F, 9, fade * .85F, false);
-                    glyph(light, power == Power.SCRIPTURE ? 18 : 8, radius * .78F, -time * .016F, 11, fade * .86F, false);
+                    glyph(light, 8, radius * .78F, -time * .016F, 11, fade * .86F, false);
+                    for (int i = 0; i < 8; i++) {
+                        var column = polar(0,0,0,radius*.58,i*TURN/8);
+                        dark.section((float)column.x, -.8F, (float)column.z, 7, .68F, .53F, 5, i,
+                                0x48203b, 0x231325, fade * .74F);
+                        light.section((float)column.x, 5.65F, (float)column.z, .29F, .68F, .59F, 5, i,
+                                0xf75040, 0xa7467e, fade * .78F);
+                    }
                     smoke(at.add(0,6,0),radius*.73F,6,fade*.48F,.62F,.44F);
+                }
+                case SCRIPTURE -> {
+                    float flare = smooth((float) (clock-scene.start()) / 34);
+                    glyph(light, 13, radius * .81F, -time * .018F, 12, fade * flare, false);
+                    glyph(light, 19, radius * .54F, time * .012F, 8, fade * flare, false);
+                    motes(light, count(165, HexConfig.DENSITY.get()), radius, 19, time, fade * flare, 1);
+                    smoke(at.add(0,11,0),radius*.81F,9,fade*.53F,.73F,.42F);
                 }
                 case PRISON -> {
                     shell(light,dark,eye,radius*.52F,time,null);

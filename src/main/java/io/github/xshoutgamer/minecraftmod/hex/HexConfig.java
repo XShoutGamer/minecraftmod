@@ -35,6 +35,13 @@ public final class HexConfig {
             TEMPORAL_RADIUS, GRAVITY_RADIUS, FIELD_LIMIT, ECHO_LIFE, ECHO_RANGE, GENESIS_RADIUS;
     public static final ModConfigSpec.DoubleValue ORB_DAMAGE, ORB_PUSH, TEMPORAL_SLOW, RUNE_PROTECTION;
 
+    public static final ModConfigSpec.IntValue ECLIPSE_RADIUS, ECLIPSE_TICKS, VOID_RADIUS, VOID_TICKS, VOID_CORE,
+            VOID_CHARGE, SCRIPTURE_TICKS, SCRIPTURE_COOLDOWN, SCRIPTURE_RADIUS;
+    public static final ModConfigSpec.DoubleValue ECLIPSE_DAMAGE, ECLIPSE_RESISTANCE, VOID_DAMAGE,
+            CORRUPTION_INNER, CORRUPTION_MIDDLE, CORRUPTION_EDGE, CORRUPTION_PERIODIC;
+    public enum MirrorProjectiles { REFLECT, DISSOLVE }
+    public static final ModConfigSpec.EnumValue<MirrorProjectiles> MIRROR_PROJECTILES;
+
     static {
         var server = new ModConfigSpec.Builder();
         TARGET = server.defineEnum("targetMode", Target.LOOK);
@@ -56,8 +63,8 @@ public final class HexConfig {
         REWRITE_BLOCK = server.define("rewriteCustomBlock", "minecraft:red_terracotta");
         VOLUME_SHAPE = server.defineEnum("rewriteVolume", Volume.SPHERE);
         REWRITE_CHARGE = server.defineInRange("rewriteChargeTicks", 120, 20, 200);
-        VOLUME_RADIUS = server.comment("Maximum charged volume radius. Zero uses 40 or a customized legacy radius.")
-                .defineInRange("rewriteVolumeMaxRadius", 0, 0, 40);
+        VOLUME_RADIUS = server.comment("Maximum charged volume radius. Zero uses 60 or a customized legacy radius.")
+                .defineInRange("rewriteVolumeMaxRadius", 0, 0, 60);
         LEGACY_REWRITE_RADIUS = server.defineInRange("rewriteMaxRadius", 13, 2, 40);
         REWRITE_DEPTH = server.defineInRange("rewriteDepth", 1, 1, 8);
         REWRITE_SECONDS = server.comment("Zero leaves changes until Genesis restores them.").defineInRange("rewriteTemporarySeconds", 0, 0, 3600);
@@ -102,6 +109,23 @@ public final class HexConfig {
         CORRUPTION_FALLOFF = server.define("corruptionDamageFalloff", true);
         CORRUPTION_DAMAGE = server.defineInRange("corruptionDamage", 5D, 0, 50);
         CORRUPTION_TICKS = server.defineInRange("corruptionEffectTicks", 100, 0, 600);
+        MIRROR_PROJECTILES = server.defineEnum("mirrorProjectiles", MirrorProjectiles.REFLECT);
+        ECLIPSE_RADIUS = server.defineInRange("eclipseRadius", 150, 20, 240);
+        ECLIPSE_TICKS = server.defineInRange("eclipseDurationTicks", 900, 80, 2400);
+        ECLIPSE_DAMAGE = server.defineInRange("eclipsePulseDamage", 2D, 0, 20);
+        ECLIPSE_RESISTANCE = server.defineInRange("eclipseResistance", .35, 0, .85);
+        VOID_RADIUS = server.defineInRange("singularityRadius", 35, 8, 60);
+        VOID_TICKS = server.defineInRange("singularityDurationTicks", 240, 40, 900);
+        VOID_CORE = server.defineInRange("singularityCoreRadius", 6, 2, 12);
+        VOID_CHARGE = server.defineInRange("singularityChargeTicks", 80, 20, 160);
+        VOID_DAMAGE = server.defineInRange("singularityCoreDamage", 8D, 0, 40);
+        SCRIPTURE_TICKS = server.defineInRange("scriptureDurationTicks", 1200, 100, 2400);
+        SCRIPTURE_COOLDOWN = server.defineInRange("scriptureCooldownTicks", 1800, 100, 7200);
+        SCRIPTURE_RADIUS = server.defineInRange("scriptureDominionRadius", 24, 4, 48);
+        CORRUPTION_INNER = server.defineInRange("corruptionInnerCoverage", 1D, 0, 1);
+        CORRUPTION_MIDDLE = server.defineInRange("corruptionMiddleCoverage", .91, 0, 1);
+        CORRUPTION_EDGE = server.defineInRange("corruptionEdgeCoverage", .66, 0, 1);
+        CORRUPTION_PERIODIC = server.defineInRange("corruptionPeriodicDamage", 1D, 0, 20);
         SERVER = server.build();
 
         var client = new ModConfigSpec.Builder();
@@ -138,9 +162,9 @@ public final class HexConfig {
 
     public static int rewriteRadius() {
         int configured = VOLUME_RADIUS.get();
-        if (configured > 0) return Math.max(4, configured);
+        if (configured > 0) return Math.max(6, configured);
         int legacy = LEGACY_REWRITE_RADIUS.get();
-        return legacy == 13 ? 40 : Math.max(4, legacy);
+        return legacy == 13 ? 60 : Math.max(6, legacy);
     }
 
     private HexConfig() {}

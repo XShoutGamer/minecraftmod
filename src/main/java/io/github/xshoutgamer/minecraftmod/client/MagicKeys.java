@@ -16,6 +16,7 @@ final class MagicKeys {
     private static final KeyMapping MENU = key("chaos_menu", GLFW.GLFW_KEY_R);
     private static final KeyMapping CAST = key("chaos_cast", GLFW.GLFW_KEY_C);
     private static final KeyMapping BOOK = key("darkhold", GLFW.GLFW_KEY_J);
+    private static final KeyMapping SECONDARY = key("darkhold_secondary", GLFW.GLFW_KEY_U);
     private static final KeyMapping DARK = key("darkhold_cast", GLFW.GLFW_KEY_K);
     private static final java.util.Set<KeyMapping> HELD = new java.util.HashSet<>();
     private static Power personal = Power.PROJECTION, dark = Power.ECLIPSE;
@@ -27,7 +28,7 @@ final class MagicKeys {
     static boolean reserved(KeyMapping mapping) { return mapping.same(MENU) || mapping.same(CAST); }
 
     static void register(RegisterKeyMappingsEvent event) {
-        for (var key : new KeyMapping[]{QUICK, MENU, CAST, BOOK, DARK}) event.register(key);
+        for (var key : new KeyMapping[]{QUICK, MENU, CAST, BOOK, DARK, SECONDARY}) event.register(key);
     }
 
     static void select(boolean grimoire, Power power) { if (grimoire) dark = power; else personal = power; }
@@ -36,6 +37,7 @@ final class MagicKeys {
     static void tick(boolean summoned) {
         var game = Minecraft.getInstance();
         boolean menu = pressed(MENU), quick = pressed(QUICK), cast = pressed(CAST), scripture = pressed(DARK);
+        boolean secondary = pressed(SECONDARY);
         boolean book = pressed(BOOK) || BOOK.isDown();
         if (!book && !HexWheel.physicallyHeld(BOOK)) {
             if (game.screen == null && !opened && bookTicks > 0) send(PersonalMagic.BOOK, dark);
@@ -56,6 +58,8 @@ final class MagicKeys {
             send(PersonalMagic.QUICK, personal);
         } else if (cast) {
             send(PersonalMagic.PERSONAL, personal);
+        } else if (secondary && summoned) {
+            send(PersonalMagic.SECONDARY, dark);
         } else if (scripture && summoned) {
             send(PersonalMagic.GRIMOIRE, dark);
             charging = DARK.isDown();
@@ -74,10 +78,14 @@ final class MagicKeys {
         return new KeyMapping("key.minecraftmod." + name, InputConstants.Type.KEYSYM, value, "key.categories.minecraftmod");
     }
 
-    private static void send(int action, Power power) {
+    static void attune(PersonalMagic.Attunement attunement) { send(PersonalMagic.LIBRARY_SELECT, attunement.ordinal()); }
+
+    private static void send(int action, Power power) { send(action, power.ordinal()); }
+
+    private static void send(int action, int spell) {
         var connection = Minecraft.getInstance().getConnection();
         if (connection != null && NetworkRegistry.hasChannel(connection, HexNetwork.Input.TYPE.id())) {
-            PacketDistributor.sendToServer(new HexNetwork.Input(action, power.ordinal(), false));
+            PacketDistributor.sendToServer(new HexNetwork.Input(action, spell, false));
         }
     }
 }
