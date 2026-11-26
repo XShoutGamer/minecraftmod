@@ -94,7 +94,7 @@ final class HexAbilities {
             return;
         }
         var eye = hand(player);
-        var target = aim(player, HexConfig.TELEKINESIS_RANGE.get() * domain.scale());
+        var target = aim(player, HexConfig.TELEKINESIS_RANGE.get() * domain.scale() * ScarletSovereignty.reach(player));
         if (HexConfig.DEBUG.get()) player.displayClientMessage(Component.literal(
                 spell.title + " → " + BlockPos.containing(target).toShortString()), true);
         HexDomains.sound(player, eye, MinecraftMod.HEX_CAST.get(), .75F, .74F + spell.ordinal() * .048F);
@@ -115,7 +115,7 @@ final class HexAbilities {
             HexDomains.scene(player, HexNetwork.HAND_FX, spell.ordinal(), eye, target, now, 10, 1);
             return;
         }
-        readyAt[spell.ordinal()] = now + cooldown(spell);
+        readyAt[spell.ordinal()] = now + ScarletSovereignty.recovery(player, cooldown(spell));
         switch (spell) {
             case ASCENSION -> {
                 ascended = !ascended;
@@ -198,7 +198,7 @@ final class HexAbilities {
                         feedback(player, "Wait for your current terrain spell to finish.");
                         return;
                     }
-                    terrainWork = HexTerrain.get(player.serverLevel()).restoration(player.getUUID(), BlockPos.containing(target), HexConfig.GENESIS_RADIUS.get() * domain.scale());
+                    terrainWork = HexTerrain.get(player.serverLevel()).reconstruction(player.getUUID(), BlockPos.containing(target), HexConfig.GENESIS_RADIUS.get() * domain.scale());
                     if (terrainWork.isEmpty()) {
                         terrainWork = null;
                         feedback(player, "Genesis found no recorded changes near your target.");
@@ -227,10 +227,10 @@ final class HexAbilities {
         if (charging == null) return;
         var spell = charging;
         charging = null;
-        readyAt[spell.ordinal()] = now + cooldown(spell);
+        readyAt[spell.ordinal()] = now + ScarletSovereignty.recovery(player, cooldown(spell));
         float strength = Math.clamp((now - chargeStart) / (float) HexConfig.ORB_CHARGE.get(), .12F, 1);
         var eye = hand(player);
-        var target = aim(player, HexConfig.TELEKINESIS_RANGE.get() * domain.scale());
+        var target = aim(player, HexConfig.TELEKINESIS_RANGE.get() * domain.scale() * ScarletSovereignty.reach(player));
         switch (spell) {
             case TELEKINESIS -> {
                 for (var entity : held) {
@@ -258,7 +258,7 @@ final class HexAbilities {
                     feedback(player, "Wait for your current terrain spell to finish.");
                     return;
                 }
-                var hit = trace(player, HexConfig.TELEKINESIS_RANGE.get() * domain.scale());
+                var hit = trace(player, HexConfig.TELEKINESIS_RANGE.get() * domain.scale() * ScarletSovereignty.reach(player));
                 if (hit == null || hit.getType() != HitResult.Type.BLOCK) {
                     feedback(player, "Aim at a block within reach, then release Reality Rewrite.");
                     return;
@@ -338,7 +338,7 @@ final class HexAbilities {
                 float growth = Math.clamp((now - chargeStart) / (float) chargeTime, .15F, 1F);
                 HexDomains.scene(player, HexNetwork.HAND_FX, charging.ordinal(), eye, eye.add(player.getLookAngle()), now, 7, growth);
                 if (charging == HexSpell.REWRITE) {
-                    var hit = trace(player, HexConfig.TELEKINESIS_RANGE.get() * domain.scale());
+                    var hit = trace(player, HexConfig.TELEKINESIS_RANGE.get() * domain.scale() * ScarletSovereignty.reach(player));
                     if (hit != null && hit.getType() == HitResult.Type.BLOCK) {
                         scene(player, charging, 1, eye, hit.getLocation(), now, 7, rewriteRadius(now - chargeStart));
                     }
@@ -381,7 +381,9 @@ final class HexAbilities {
         if (terrainWork != null && domain.gameplay()) {
             var journal = HexTerrain.get(level);
             boolean wave = waveOrigin != null;
-            int budget = wave && !restoring ? HexConfig.CORRUPTION_EDITS.get() : HexConfig.EDITS.get();
+            boolean genesis = restoring && reportWork && !wave;
+            int budget = genesis ? journal.claimReconstructionBudget(now)
+                    : wave && !restoring ? HexConfig.CORRUPTION_EDITS.get() : HexConfig.EDITS.get();
             int edits = 0;
             int scanLimit = restoring ? budget : budget * 12;
             var shape = restoring ? HexConfig.Volume.SPHERE : workShape;
@@ -396,6 +398,10 @@ final class HexAbilities {
                         : workShape == HexConfig.Volume.TERRAIN
                         ? journal.rewrite(player, pos) : journal.rewriteBlock(player, pos);
                 if (change > 0) {
+                    if (genesis && now % 3 == 0 && edits % Math.max(8, budget / 5) == 0) {
+                        var fragment = Vec3.atCenterOf(pos);
+                        scene(player, HexNetwork.RECONSTRUCTION_FX, 0, fragment, fragment, now, 32, 5);
+                    }
                     edits += change;
                     changedAt = Vec3.atCenterOf(pos);
                 }
@@ -447,7 +453,7 @@ final class HexAbilities {
         liftDistance = Math.clamp(player.distanceTo(selected), 4, HexConfig.TELEKINESIS_RANGE.get());
         for (var extra : level.getEntities(selected, selected.getBoundingBox().inflate(2.8),
                 entity -> eligible(player, entity) && !(entity instanceof Projectile))) {
-            if (held.size() >= HexConfig.TELEKINESIS_LIMIT.get()) break;
+            if (held.size() >= HexConfig.TELEKINESIS_LIMIT.get() + (ScarletSovereignty.empowered(player) ? 3 : 0)) break;
             held.add(extra);
         }
     }

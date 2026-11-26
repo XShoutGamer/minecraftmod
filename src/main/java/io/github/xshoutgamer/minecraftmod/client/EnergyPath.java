@@ -11,6 +11,16 @@ final class EnergyPath {
 
     static void render(NailMesh mesh, Vec3[] path, Vec3 eye, float width, float intensity, int tint,
                        float clock, float growth, boolean tapered) {
+        render(mesh, path, eye, width, intensity, tint, clock, growth, tapered, false);
+    }
+
+    static void converging(NailMesh mesh, Vec3[] path, Vec3 eye, float width, float intensity, int tint,
+                           float clock, float growth) {
+        render(mesh, path, eye, width, intensity, tint, clock, growth, false, true);
+    }
+
+    private static void render(NailMesh mesh, Vec3[] path, Vec3 eye, float width, float intensity, int tint,
+                               float clock, float growth, boolean tapered, boolean converging) {
         if (path.length < 2 || growth <= 0 || intensity <= .003F) return;
         boolean closed = path[0].equals(path[path.length - 1]);
         Point left = null, right = null;
@@ -27,11 +37,13 @@ final class EnergyPath {
             Vec3 edge = tangent.cross(eye == null ? new Vec3(0, 1, 0) : eye.subtract(here)).normalize();
             if (edge.lengthSqr() < 1e-6) edge = tangent.cross(new Vec3(1, 0, 0)).normalize();
             float taper = tapered ? 1 - .94F * progress : 1;
+            if (converging) taper = (float) Math.clamp(.014 + meters * .088, .014, 1);
             edge = edge.scale(width * taper);
             Point a = point(here.add(edge)), b = point(here.subtract(edge));
             float traveling = .78F + .14F * Mth.sin((float) meters * .14F - clock) + .08F * Mth.sin((float) meters * .39F + clock * .55F);
             float gain = intensity * (closed ? Mth.lerp((float) Math.pow(Math.abs(2 * progress - 1), 8),
                     traveling, .8F) : traveling) * Mth.clamp((growth - progress) * (path.length - 1) + .4F, 0, 1);
+            if (converging) gain *= (float) Math.clamp(here.distanceToSqr(eye) / 64, 0, 1);
             if (left != null) mesh.joinedQuad(left, right, b, a, tint, previous, gain, (float) previousMeters * .0625F, (float) meters * .0625F);
             if (progress > growth) break;
             left = a;

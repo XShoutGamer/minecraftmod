@@ -10,6 +10,7 @@ import io.github.xshoutgamer.minecraftmod.hex.HexNetwork;
 import io.github.xshoutgamer.minecraftmod.hex.HexSpell;
 import io.github.xshoutgamer.minecraftmod.hex.PersonalMagic;
 import io.github.xshoutgamer.minecraftmod.hex.PersonalMagic.Power;
+import io.github.xshoutgamer.minecraftmod.hex.ScarletSovereignty;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -271,6 +272,10 @@ final class HexRenderer {
     }
 
     private void spell(HexNetwork.Scene scene) {
+        if (scene.kind() >= HexNetwork.RECONSTRUCTION_FX) {
+            sovereignty(scene);
+            return;
+        }
         if (scene.kind() >= PersonalMagic.BOOK_FX) {
             personal(scene);
             return;
@@ -396,6 +401,64 @@ final class HexRenderer {
                 case ECHO -> echo(scene, at);
                 default -> motes(light, count(51, HexConfig.DENSITY.get()), r, r * 2, time, alpha, 0);
             }
+        }
+        pose.popPose();
+    }
+
+    private void sovereignty(HexNetwork.Scene scene) {
+        var at = scene.target();
+        var game = Minecraft.getInstance();
+        var player = game.level == null ? null : game.level.getPlayerByUUID(scene.owner());
+        boolean firstPerson = player != null && player == game.player && game.options.getCameraType().isFirstPerson();
+        float r = scene.radius();
+        float life = Mth.clamp((float) (clock - scene.start()) / Math.max(1, scene.duration()), 0, 1);
+        float alpha = 1 - life;
+        if (scene.kind() == ScarletSovereignty.PRESENCE && player != null) at = player.getPosition((float) (clock % 1));
+        begin(at);
+        var light = mesh(true);
+        var dark = mesh(false);
+        var eye = origin.subtract(at);
+        switch (scene.kind()) {
+            case ScarletSovereignty.PRESENCE -> {
+                var phase = ScarletSovereignty.Phase.values()[scene.variant()];
+                float strength = (float) Math.clamp(scene.origin().y - scene.target().y, 0, 1);
+                float yaw = player == null ? 0 : player.getYHeadRot() * Mth.DEG_TO_RAD;
+                SovereigntyGeometry.presence(light, dark, eye, time, strength, r, phase, quality, yaw, firstPerson);
+                if (!firstPerson) smoke(at.add(0, .48, 0), 3.7F, 2.7F, .68F * strength, .88F, .71F);
+                if (phase.reigning() || strength > .65F) {
+                    for (int i = 0; i < (quality >= 6 ? 10 : 5); i++) {
+                        float ring = r * (.12F + .019F * i);
+                        smoke(at.add(polar(0, 27 + (i % 3) * 12, 0, ring, i * 2.399963 + time * .004)),
+                                ring * 2, 24 + i * 2, .28F * strength, .42F, i * .18F);
+                    }
+                }
+            }
+            case ScarletSovereignty.RELEASE_WAVE -> {
+                float front = Math.max(2, r * (1 - (1 - life) * (1 - life)));
+                groundRing(light, at, front, eye, alpha);
+                for (int ring = 0; ring < 5; ring++) {
+                    float latitude = (ring - 2) * .24F;
+                    light.ring(front * latitude, front * (float) Math.sqrt(1 - latitude * latitude),
+                            front * .021F + .2F, ring + time * .02, 104, ring % 2 == 0 ? 1 : 3,
+                            ring % 2 == 0 ? HOT : ROSE, alpha * .64F);
+                }
+                SovereigntyGeometry.fractures(light, dark, eye, time, front, alpha, quality >= 6 ? 14 : 7);
+                smoke(at, front * 1.8F, front * .32F, .46F * alpha, .82F, .54F);
+            }
+            case ScarletSovereignty.FORMATION -> {
+                SovereigntyGeometry.rebuild(light, dark, eye, time, life, r, quality);
+                if (scene.variant() == 2) {
+                    glyph(light, 4.5F, r * smooth(life * 5), -time * .024F, 11, .75F * alpha, false);
+                    SovereigntyGeometry.fractures(light, dark, eye, time, r, alpha, 7);
+                }
+            }
+            case ScarletSovereignty.CAPTURE -> {
+                aura(light, dark, eye, r * .65F, scene.variant());
+                glyph(light, .27F, r * .82F, time * .028F, 5, .66F * alpha, false);
+                smoke(at, r * 1.75F, r * 1.9F, .59F * alpha, .68F, .14F);
+            }
+            case HexNetwork.RECONSTRUCTION_FX -> SovereigntyGeometry.rebuild(light, dark, eye, time, life, r, quality);
+            default -> { }
         }
         pose.popPose();
     }

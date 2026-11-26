@@ -5,6 +5,7 @@ import io.github.xshoutgamer.minecraftmod.hex.HexConfig;
 import io.github.xshoutgamer.minecraftmod.hex.HexDomains;
 import io.github.xshoutgamer.minecraftmod.hex.HexTerrainCommands;
 import io.github.xshoutgamer.minecraftmod.hex.PersonalMagic;
+import io.github.xshoutgamer.minecraftmod.hex.ScarletSovereignty;
 import io.github.xshoutgamer.minecraftmod.nail.NailCast;
 import io.github.xshoutgamer.minecraftmod.nail.NailCooldown;
 import net.minecraft.core.registries.Registries;
@@ -54,6 +55,9 @@ public final class MinecraftMod {
     public static final DeferredHolder<SoundEvent, SoundEvent> VOID_SOUND = sound("singularity_collapse");
     public static final DeferredHolder<SoundEvent, SoundEvent> DARKHOLD_SOUND = sound("darkhold_cast");
     public static final DeferredHolder<SoundEvent, SoundEvent> CHAOS_SOUND = sound("chaos_dissolve");
+    public static final DeferredHolder<SoundEvent, SoundEvent> SOVEREIGN_CURRENT = sound("sovereign_current");
+    public static final DeferredHolder<SoundEvent, SoundEvent> SOVEREIGN_CROWN = sound("sovereign_crown");
+    public static final DeferredHolder<SoundEvent, SoundEvent> SOVEREIGN_RELEASE = sound("sovereign_release");
     public static final DeferredHolder<SoundEvent, SoundEvent> HEX_CAST = sound("hex_cast");
 
     public MinecraftMod(IEventBus bus, ModContainer container) {
@@ -64,6 +68,14 @@ public final class MinecraftMod {
         NeoForge.EVENT_BUS.addListener(NailCooldown::register);
         NeoForge.EVENT_BUS.addListener(HexTerrainCommands::register);
         NeoForge.EVENT_BUS.addListener(HexDomains::tick);
+        NeoForge.EVENT_BUS.addListener(ScarletSovereignty::tick);
+        NeoForge.EVENT_BUS.addListener(ScarletSovereignty::damage);
+        NeoForge.EVENT_BUS.addListener(ScarletSovereignty::target);
+        NeoForge.EVENT_BUS.addListener(ScarletSovereignty::impact);
+        NeoForge.EVENT_BUS.addListener(ScarletSovereignty::knockback);
+        NeoForge.EVENT_BUS.addListener(ScarletSovereignty::login);
+        NeoForge.EVENT_BUS.addListener(ScarletSovereignty::logout);
+        NeoForge.EVENT_BUS.addListener(ScarletSovereignty::dimension);
         NeoForge.EVENT_BUS.addListener(PersonalMagic::tick);
         NeoForge.EVENT_BUS.addListener(PersonalMagic::damage);
         NeoForge.EVENT_BUS.addListener(PersonalMagic::login);

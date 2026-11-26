@@ -47,11 +47,13 @@ public final class CinematicEffects {
                 HexClient.clock(event.getPartialTick().getGameTimeDeltaPartialTick(false)));
         float scarletWarp = io.github.xshoutgamer.minecraftmod.hex.HexConfig.POST_EFFECTS.get()
                 && !CelestiaConfig.REDUCED_MOTION.get() ? scarlet : 0;
-        if (scarlet > .003F || ((quality() >= 4 || monochrome > 0) && focusSource != null)) {
+        float inversion = HexClient.sovereigntyInversion(view.getPosition(),
+                HexClient.clock(event.getPartialTick().getGameTimeDeltaPartialTick(false)));
+        if (scarlet > .003F || inversion > .003F || ((quality() >= 4 || monochrome > 0) && focusSource != null)) {
             float aspect = (float) mc.getWindow().getWidth() / Math.max(1, mc.getWindow().getHeight());
             var focus = focusSource == null ? new org.joml.Vector2f(.5F, .5F) : screenFocus(view, focusSource, aspect);
             if (CelestialPost.render(mc, event.getPartialTick().getGameTimeDeltaTicks(), exposure,
-                    effect.warp, effect.haze, effect.motion, monochrome, scarlet, scarletWarp, focus.x, focus.y)) return;
+                    effect.warp, effect.haze, effect.motion, monochrome, scarlet, scarletWarp, inversion, focus.x, focus.y)) return;
         }
         var gui = event.getGuiGraphics();
         int width = gui.guiWidth(), height = gui.guiHeight();

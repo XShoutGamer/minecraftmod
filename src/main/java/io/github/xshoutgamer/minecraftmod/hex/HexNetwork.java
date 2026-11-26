@@ -19,6 +19,7 @@ public final class HexNetwork {
     public static final int AWAKENING = 0, EXPANDING = 1, ACTIVE = 2, ENHANCED = 3, COLLAPSING = 4;
     public static final int HAND_FX = 20, ORB_FX = 21, BARRIER_FX = 22, RUNE_FX = 23;
 
+    public static final int RECONSTRUCTION_FX = 43;
     public static final int REWRITE_WAVE = 2, REWRITE_FADE = 3;
     public static final int REWRITE_WAVE_TIMEOUT = 8;
 
@@ -29,7 +30,9 @@ public final class HexNetwork {
         optional.playToServer(Input.TYPE, Input.CODEC, (packet, context) -> {
             if (context.player() instanceof ServerPlayer player) {
                 if (packet.action() >= PersonalMagic.QUICK && packet.action() <= PersonalMagic.LIBRARY_SELECT) PersonalMagic.input(player, packet);
-                else HexDomains.input(player, packet);
+                else if (packet.action() >= ScarletSovereignty.PRESS && packet.action() <= ScarletSovereignty.COMMAND) {
+                    ScarletSovereignty.input(player, packet.action());
+                } else HexDomains.input(player, packet);
             }
         });
         optional.playToClient(Scene.TYPE, Scene.CODEC, (packet, context) -> HexClient.receive(packet));

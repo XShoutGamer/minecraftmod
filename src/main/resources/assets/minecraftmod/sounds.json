@@ -1,4 +1,16 @@
 {
+  "sovereign_current": {
+    "subtitle": "subtitles.minecraftmod.sovereign_current",
+    "sounds": [{"name": "minecraftmod:sovereign_current", "attenuation_distance": 120}]
+  },
+  "sovereign_crown": {
+    "subtitle": "subtitles.minecraftmod.sovereign_crown",
+    "sounds": [{"name": "minecraftmod:sovereign_crown", "attenuation_distance": 120}]
+  },
+  "sovereign_release": {
+    "subtitle": "subtitles.minecraftmod.sovereign_release",
+    "sounds": [{"name": "minecraftmod:sovereign_release", "attenuation_distance": 190}]
+  },
   "summon": {
     "subtitle": "subtitles.minecraftmod.summon",
     "sounds": [

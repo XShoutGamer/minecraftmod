@@ -4,6 +4,7 @@ uniform sampler2D DiffuseSampler;
 uniform vec2 InSize;
 uniform float Exposure;
 uniform float Monochrome;
+uniform float Inversion;
 uniform float Warp;
 uniform float Scarlet;
 uniform float ScarletWarp;
@@ -60,5 +61,6 @@ void main() {
     vec3 original = scene(texCoord);
     float luminance = dot(original, vec3(0.2126, 0.7152, 0.0722));
     color = mix(color, vec3(luminance), Monochrome);
+    color = mix(color, vec3(1.0) - color, Inversion);
     fragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
 }

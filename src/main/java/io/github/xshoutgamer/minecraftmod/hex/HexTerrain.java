@@ -30,6 +30,7 @@ public final class HexTerrain extends SavedData {
     private record Change(UUID owner, BlockState before, BlockState after, long expires) {}
     private static final Factory<HexTerrain> FACTORY = new Factory<>(HexTerrain::new, HexTerrain::load);
     private final Map<BlockPos, Change> changes = new LinkedHashMap<>();
+    private long reconstructionTick = Long.MIN_VALUE;
 
     static HexTerrain get(ServerLevel level) {
         return level.getDataStorage().computeIfAbsent(FACTORY, "minecraftmod_hex_terrain");
@@ -174,6 +175,38 @@ public final class HexTerrain extends SavedData {
                 .filter(entry -> entry.getValue().owner.equals(owner) && entry.getKey().distSqr(center) <= radius * radius)
                 .map(Map.Entry::getKey).sorted(Comparator.comparingDouble(center::distSqr)).toList();
         return new ArrayDeque<>(positions);
+    }
+
+    Deque<BlockPos> reconstruction(UUID owner, BlockPos center, double radius) {
+        var chunks = new LinkedHashMap<Long, Deque<BlockPos>>();
+        for (var pos : restoration(owner, center, radius)) {
+            long chunk = net.minecraft.world.level.ChunkPos.asLong(pos);
+            chunks.computeIfAbsent(chunk, ignored -> new ArrayDeque<>()).add(pos);
+        }
+        var result = new ArrayDeque<BlockPos>();
+        while (!chunks.isEmpty()) {
+            var iter = chunks.values().iterator();
+            while (iter.hasNext()) {
+                var positions = iter.next();
+                for (int i = 0; i < 32 && !positions.isEmpty(); i++) result.addLast(positions.removeFirst());
+                if (positions.isEmpty()) iter.remove();
+            }
+        }
+        return result;
+    }
+
+    int claimReconstructionBudget(long now) {
+        if (now == reconstructionTick) return 0;
+        reconstructionTick = now;
+        return genesisBudget();
+    }
+
+    static int genesisBudget() {
+        return switch (HexConfig.GENESIS_SPEED.get()) {
+            case CINEMATIC -> 64;
+            case RAPID -> 384;
+            case DIVINE -> 1024;
+        };
     }
 
     static double distance(BlockPos center, BlockPos pos, HexConfig.Volume shape) {

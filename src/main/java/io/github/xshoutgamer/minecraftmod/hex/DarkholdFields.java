@@ -82,6 +82,11 @@ final class DarkholdFields {
     }
 
     static int platform(ServerPlayer caster, BlockPos center, int radius, int ticks) {
+        return platform(caster, center, radius, ticks, pos -> {});
+    }
+
+    static int platform(ServerPlayer caster, BlockPos center, int radius, int ticks,
+                        java.util.function.Consumer<BlockPos> onPlaced) {
         var level = caster.serverLevel();
         if (!HexTerrain.canRewrite(caster)) return 0;
         var block = CelestialBlocks.ARCANE_PLATFORM.get();
@@ -96,6 +101,7 @@ final class DarkholdFields {
                 snapshot.restore();
             } else {
                 level.scheduleTick(pos, block, Math.max(1, ticks));
+                onPlaced.accept(pos);
                 placed++;
             }
         }

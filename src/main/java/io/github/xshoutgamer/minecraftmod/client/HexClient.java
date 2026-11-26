@@ -7,6 +7,7 @@ import io.github.xshoutgamer.minecraftmod.hex.HexConfig;
 import io.github.xshoutgamer.minecraftmod.hex.HexNetwork;
 import io.github.xshoutgamer.minecraftmod.hex.HexSpell;
 import io.github.xshoutgamer.minecraftmod.hex.PersonalMagic;
+import io.github.xshoutgamer.minecraftmod.hex.ScarletSovereignty;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -42,6 +43,7 @@ public final class HexClient {
     private static final Map<UUID, Long> LAST_SEEN = new LinkedHashMap<>();
     private static final LinkedHashMap<EffectKey, HexNetwork.Scene> EFFECTS = new LinkedHashMap<>();
     private static ClientLevel world;
+    private static net.minecraft.client.CameraType savedCamera;
     private static int held;
     private static boolean consumed;
     private static final java.util.Set<KeyMapping> PRESSED = new java.util.HashSet<>();
@@ -105,13 +107,21 @@ public final class HexClient {
                     && key.variant() >= PersonalMagic.Power.DREAM.ordinal()));
             return;
         }
+        if (scene.kind() == ScarletSovereignty.PRESENCE && scene.variant() == ScarletSovereignty.Phase.INACTIVE.ordinal()) {
+            EFFECTS.remove(new EffectKey(scene.owner(), scene.kind(), 0, 0));
+            return;
+        }
         if (scene.kind() <= HexNetwork.COLLAPSING) {
             DOMAINS.put(scene.owner(), scene);
             LAST_SEEN.put(scene.owner(), world.getGameTime());
         } else {
-            long instance = scene.kind() == HexNetwork.RUNE_FX || scene.kind() == HexNetwork.ORB_FX || scene.kind() == PersonalMagic.MEMORY_FX ? scene.start() ^ scene.target().hashCode() : 0;
-            int variant = scene.kind() == 6 + HexSpell.REWRITE.ordinal() && scene.variant() == HexNetwork.REWRITE_FADE
-                    ? HexNetwork.REWRITE_WAVE : scene.variant();
+            long instance = scene.kind() == HexNetwork.RUNE_FX || scene.kind() == HexNetwork.ORB_FX || scene.kind() == PersonalMagic.MEMORY_FX
+                    || scene.kind() == HexNetwork.RECONSTRUCTION_FX || scene.kind() == ScarletSovereignty.CAPTURE
+                    || scene.kind() == ScarletSovereignty.FORMATION || scene.kind() == ScarletSovereignty.RELEASE_WAVE ? scene.start() ^ scene.target().hashCode() : 0;
+            int variant = scene.kind() == ScarletSovereignty.PRESENCE ? 0 : scene.variant();
+            if (scene.kind() == 6 + HexSpell.REWRITE.ordinal() && scene.variant() == HexNetwork.REWRITE_FADE) {
+                variant = HexNetwork.REWRITE_WAVE;
+            }
             EFFECTS.put(new EffectKey(scene.owner(), scene.kind(), variant, instance), scene);
             if (EFFECTS.size() > 960) EFFECTS.pollFirstEntry();
         }
@@ -120,6 +130,8 @@ public final class HexClient {
     private static void checkWorld() {
         var level = Minecraft.getInstance().level;
         if (world == level) return;
+        restoreCamera();
+        MagicKeys.resetSovereignty();
         world = level;
         DOMAINS.clear();
         LAST_SEEN.clear();
@@ -142,6 +154,7 @@ public final class HexClient {
                 : now - LAST_SEEN.getOrDefault(scene.owner(), now) > 45);
         LAST_SEEN.keySet().retainAll(DOMAINS.keySet());
         EFFECTS.values().removeIf(scene -> now >= scene.start() + scene.duration());
+        updateCamera(game);
         MagicKeys.tick(EFFECTS.keySet().stream().anyMatch(key -> key.owner().equals(game.player.getUUID()) && key.kind() == PersonalMagic.BOOK_FX));
         var own = DOMAINS.get(game.player.getUUID());
         boolean domainDown = DOMAIN.isDown();
@@ -225,6 +238,42 @@ public final class HexClient {
         };
     }
 
+    private static HexNetwork.Scene sovereignty() {
+        var player = Minecraft.getInstance().player;
+        return player == null ? null : EFFECTS.get(new EffectKey(player.getUUID(), ScarletSovereignty.PRESENCE, 0, 0));
+    }
+
+    private static void updateCamera(Minecraft game) {
+        var scene = sovereignty();
+        boolean cinematic = scene != null && ScarletSovereignty.Phase.values()[scene.variant()].charging()
+                && HexConfig.SOVEREIGN_CAMERA.get() && !CelestiaConfig.REDUCED_MOTION.get() && game.screen == null;
+        if (!cinematic) restoreCamera();
+        else if (savedCamera == null) {
+            savedCamera = game.options.getCameraType();
+            game.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK);
+        }
+    }
+
+    private static void restoreCamera() {
+        if (savedCamera == null) return;
+        var options = Minecraft.getInstance().options;
+        if (options.getCameraType() == net.minecraft.client.CameraType.THIRD_PERSON_BACK) options.setCameraType(savedCamera);
+        savedCamera = null;
+    }
+
+    static float sovereigntyInversion(Vec3 eye, double now) {
+        if (!HexConfig.SOVEREIGN_INVERSION.get() || CelestiaConfig.REDUCED_FLASH.get()) return 0;
+        float value = 0;
+        for (var scene : EFFECTS.values()) {
+            if (scene.kind() != ScarletSovereignty.RELEASE_WAVE) continue;
+            double age = now - scene.start();
+            if (age < 0 || age > 7) continue;
+            float intensity = Mth.clamp(1 - (float) eye.distanceTo(scene.target()) / scene.radius(), 0, 1);
+            value = Math.max(value, intensity * .68F * (float) Math.sin(Math.PI * age / 7));
+        }
+        return value;
+    }
+
     static float atmosphere(Vec3 camera, double now) {
         float intensity = 0;
         for (var scene : DOMAINS.values()) {
@@ -235,6 +284,11 @@ public final class HexClient {
             intensity = Math.max(intensity, inside * (scene.kind() == HexNetwork.ENHANCED ? 1 : .75F));
         }
         for (var scene : EFFECTS.values()) {
+            if (scene.kind() == ScarletSovereignty.PRESENCE) {
+                float strength = (float) Math.clamp(scene.origin().y - scene.target().y, 0, 1);
+                float inside = Mth.clamp((scene.radius() - (float) camera.distanceTo(scene.target())) / 90, 0, 1);
+                intensity = Math.max(intensity, inside * (.12F + strength * .64F));
+            }
             if (scene.kind() == PersonalMagic.POWER_FX && scene.variant() == PersonalMagic.Power.ECLIPSE.ordinal()) {
                 float fade = Mth.clamp((float) (scene.start() + scene.duration() - now) / 35, 0, 1);
                 intensity = Math.max(intensity, fade * .87F * Mth.clamp((scene.radius() - (float) camera.distanceTo(scene.target())) / 12, 0, 1));
@@ -253,7 +307,11 @@ public final class HexClient {
     @SubscribeEvent
     public static void hands(RenderHandEvent event) {
         var scene = own();
-        if (scene != null && scene.kind() != HexNetwork.COLLAPSING) {
+        var ultimate = sovereignty();
+        if (ultimate != null) {
+            float strength = (float) Math.clamp(ultimate.origin().y - ultimate.target().y, 0, 1);
+            HexRenderer.hands(event, HexSpell.ASCENSION, .3F + strength * .7F);
+        } else if (scene != null && scene.kind() != HexNetwork.COLLAPSING) {
             HexRenderer.hands(event, castingSpell, chargeBlend);
         }
     }

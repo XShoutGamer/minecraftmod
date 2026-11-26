@@ -15,6 +15,15 @@ public final class HexConfig {
     public static final ModConfigSpec.ConfigValue<String> REWRITE_BLOCK;
     private static final ModConfigSpec.IntValue VOLUME_RADIUS, LEGACY_REWRITE_RADIUS;
     public static final ModConfigSpec.IntValue REWRITE_DEPTH, REWRITE_SECONDS;
+    public enum GenesisSpeed { CINEMATIC, RAPID, DIVINE }
+    public static final ModConfigSpec.EnumValue<GenesisSpeed> GENESIS_SPEED;
+    public static final ModConfigSpec.IntValue SOVEREIGN_MIN, SOVEREIGN_MAX, SOVEREIGN_SKY, SOVEREIGN_CHARGE,
+            SOVEREIGN_LIFE, SOVEREIGN_END, SOVEREIGN_RECOVERY;
+    public static final ModConfigSpec.BooleanValue SOVEREIGN_ENABLED, SOVEREIGN_FLIGHT, SOVEREIGN_WARD,
+            SOVEREIGN_PROJECTILES, SOVEREIGN_CONSTRUCTS, SOVEREIGN_THRONE, SOVEREIGN_COSTUME, SOVEREIGN_CAMERA,
+            SOVEREIGN_SUSPEND, SOVEREIGN_DISSOLVE, SOVEREIGN_INVERSION;
+    public static final ModConfigSpec.DoubleValue SOVEREIGN_DAMAGE, SOVEREIGN_REACH, SOVEREIGN_SPELL_RECOVERY;
+
     public enum Target { LOOK, STATIONARY, FOLLOW, AURA }
 
     public static final ModConfigSpec SERVER, CLIENT;
@@ -105,6 +114,26 @@ public final class HexConfig {
         ECHO_ATTACK = server.define("echoAttacks", true);
         ECHO_GUARD = server.define("echoDeflectsProjectiles", true);
         ECHO_RANGE = server.defineInRange("echoRange", 16, 4, 48);
+        server.push("scarletSovereignty");
+        SOVEREIGN_ENABLED = server.define("enabled", true);
+        SOVEREIGN_MIN = server.defineInRange("standardRadius", 60, 4, 250);
+        SOVEREIGN_MAX = server.defineInRange("chargedRadius", 150, 4, 250);
+        SOVEREIGN_SKY = server.defineInRange("atmosphereRadius", 350, 20, 500);
+        SOVEREIGN_CHARGE = server.defineInRange("chargeTicks", 140, 20, 400);
+        SOVEREIGN_LIFE = server.defineInRange("activeSeconds", 30, 5, 120);
+        SOVEREIGN_END = server.defineInRange("endingTicks", 100, 20, 200);
+        SOVEREIGN_RECOVERY = server.defineInRange("cooldownSeconds", 20, 0, 300);
+        SOVEREIGN_FLIGHT = server.define("flight", true);
+        SOVEREIGN_WARD = server.define("invulnerability", true);
+        SOVEREIGN_PROJECTILES = server.define("interceptProjectiles", true);
+        SOVEREIGN_CONSTRUCTS = server.define("physicalConstructs", true);
+        SOVEREIGN_SUSPEND = server.define("suspendHostiles", true);
+        SOVEREIGN_DISSOLVE = server.define("creativeHostileDissolution", false);
+        SOVEREIGN_REACH = server.defineInRange("spellReachMultiplier", 1.35, 1, 2);
+        SOVEREIGN_SPELL_RECOVERY = server.defineInRange("spellCooldownMultiplier", .65, .15, 1);
+        SOVEREIGN_DAMAGE = server.defineInRange("hostileDamage", 16D, 0, 100);
+        server.pop();
+        GENESIS_SPEED = server.defineEnum("genesisSpeed", GenesisSpeed.DIVINE);
         GENESIS_RADIUS = server.defineInRange("genesisRadius", 38, 4, 150);
         DEBUG = server.define("abilityDebug", false);
         DISINTEGRATION_RANGE = server.defineInRange("disintegrationRange", 32, 6, 64);
@@ -147,6 +176,12 @@ public final class HexConfig {
                 client.defineEnum("slot2", HexSpell.BARRIER), client.defineEnum("slot3", HexSpell.TELEKINESIS));
         client.pop();
         client.push("firstPersonMagic");
+        client.push("scarletSovereignty");
+        SOVEREIGN_THRONE = client.define("scarletThrone", true);
+        SOVEREIGN_COSTUME = client.define("magicalCostume", true);
+        SOVEREIGN_CAMERA = client.define("cinematicCamera", false);
+        SOVEREIGN_INVERSION = client.define("releaseInversion", false);
+        client.pop();
         HAND_PRESET = client.defineEnum("preset", HandPreset.CINEMATIC);
         HAND_X = client.defineInRange("horizontalPosition", .69, .55, 1.02);
         HAND_Y = client.defineInRange("verticalPosition", .68, .54, 1.02);

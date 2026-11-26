@@ -3,6 +3,7 @@ package io.github.xshoutgamer.minecraftmod.client;
 import com.mojang.blaze3d.platform.InputConstants;
 import io.github.xshoutgamer.minecraftmod.hex.HexNetwork;
 import io.github.xshoutgamer.minecraftmod.hex.PersonalMagic;
+import io.github.xshoutgamer.minecraftmod.hex.ScarletSovereignty;
 import io.github.xshoutgamer.minecraftmod.hex.PersonalMagic.Power;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -16,19 +17,20 @@ final class MagicKeys {
     private static final KeyMapping MENU = key("chaos_menu", GLFW.GLFW_KEY_R);
     private static final KeyMapping CAST = key("chaos_cast", GLFW.GLFW_KEY_C);
     private static final KeyMapping BOOK = key("darkhold", GLFW.GLFW_KEY_J);
-    private static final KeyMapping SECONDARY = key("darkhold_secondary", GLFW.GLFW_KEY_U);
+    private static final KeyMapping SECONDARY = key("darkhold_secondary", GLFW.GLFW_KEY_I);
+    private static final KeyMapping SOVEREIGN = key("sovereignty", GLFW.GLFW_KEY_U);
     private static final KeyMapping DARK = key("darkhold_cast", GLFW.GLFW_KEY_K);
     private static final java.util.Set<KeyMapping> HELD = new java.util.HashSet<>();
     private static Power personal = Power.PROJECTION, dark = Power.ECLIPSE;
     private static int bookTicks;
-    private static boolean opened, charging;
+    private static boolean opened, charging, sovereignHeld;
 
     private MagicKeys() {}
 
     static boolean reserved(KeyMapping mapping) { return mapping.same(MENU) || mapping.same(CAST); }
 
     static void register(RegisterKeyMappingsEvent event) {
-        for (var key : new KeyMapping[]{QUICK, MENU, CAST, BOOK, DARK, SECONDARY}) event.register(key);
+        for (var key : new KeyMapping[]{QUICK, MENU, CAST, BOOK, DARK, SECONDARY, SOVEREIGN}) event.register(key);
     }
 
     static void select(boolean grimoire, Power power) { if (grimoire) dark = power; else personal = power; }
@@ -37,7 +39,21 @@ final class MagicKeys {
     static void tick(boolean summoned) {
         var game = Minecraft.getInstance();
         boolean menu = pressed(MENU), quick = pressed(QUICK), cast = pressed(CAST), scripture = pressed(DARK);
+        boolean ultimate = pressed(SOVEREIGN);
         boolean secondary = pressed(SECONDARY);
+        if (sovereignHeld && (!SOVEREIGN.isDown() || game.screen != null || !game.isWindowActive())) {
+            send(game.screen != null || !game.isWindowActive() ? ScarletSovereignty.CANCEL : ScarletSovereignty.RELEASE, 0);
+            sovereignHeld = false;
+        }
+        if (ultimate && game.screen == null && game.player != null) {
+            if (game.options.keyShift.isDown()) {
+                send(ScarletSovereignty.COMMAND, 0);
+            } else {
+                send(ScarletSovereignty.PRESS, 0);
+                sovereignHeld = SOVEREIGN.isDown();
+                if (!sovereignHeld) send(ScarletSovereignty.RELEASE, 0);
+            }
+        }
         boolean book = pressed(BOOK) || BOOK.isDown();
         if (!book && !HexWheel.physicallyHeld(BOOK)) {
             if (game.screen == null && !opened && bookTicks > 0) send(PersonalMagic.BOOK, dark);
@@ -58,13 +74,18 @@ final class MagicKeys {
             send(PersonalMagic.QUICK, personal);
         } else if (cast) {
             send(PersonalMagic.PERSONAL, personal);
-        } else if (secondary && summoned) {
+        } else if (secondary && summoned && !(ultimate && SECONDARY.same(SOVEREIGN))) {
             send(PersonalMagic.SECONDARY, dark);
         } else if (scripture && summoned) {
             send(PersonalMagic.GRIMOIRE, dark);
             charging = DARK.isDown();
             if (!charging) send(PersonalMagic.GRIMOIRE_RELEASE, dark);
         }
+    }
+
+    static void resetSovereignty() {
+        sovereignHeld = false;
+        HELD.remove(SOVEREIGN);
     }
 
     private static boolean pressed(KeyMapping key) {

@@ -81,6 +81,24 @@ def signal(name, duration, seed):
             age = np.maximum(t-start, 0)
             wave += (t >= start) * np.exp(-17*age) * (grit*noise + .18*soft_noise)
         wave *= .68
+    elif name == "sovereign_current":
+        sweep = np.sin(2 * np.pi * (48 * t + 15 * t * u))
+        chorus = sum(np.sin(2 * np.pi * f * t + 1.1 * np.sin(t * rate))
+                     for f, rate in ((97, 2.1), (144, 3.8), (195.6, 5.2))) / 3
+        envelope = np.sin(np.pi * u) ** .64
+        wave = envelope * (.35 * sweep + .37 * chorus + .27 * soft_noise)
+        wave *= .79 + .21 * np.sin(2 * np.pi * (1.4 * t + 2.7 * t * u))
+    elif name == "sovereign_crown":
+        harmonics = sum(np.sin(2 * np.pi * f * t + .9 * np.sin(t * 8)) * np.exp(-t * decay)
+                        for f, decay in ((294, .8), (440, 1.1), (622, 1.5), (880, 2.8))) / 4
+        wave = ramp * (.55 * harmonics + .16 * bass * np.exp(-t * 1.9) + .15 * air * np.exp(-t))
+    elif name == "sovereign_release":
+        pressure = np.sin(2 * np.pi * (32 * t + 17 * (1 - np.exp(-t * 3))))
+        clang = np.sin(2 * np.pi * (156 * t + 7 * np.sin(t * 8.8)))
+        wave = (.53 * pressure + .42 * soft_noise + .16 * clang) * np.exp(-t * 1.65)
+        for start in (.19, .48, .87):
+            age = np.maximum(0, t - start)
+            wave += (t >= start) * np.exp(-12 * age) * (.22 * noise + .15 * chord)
     elif name == "ambient":
         wave = ramp * (0.4 * chord + 0.25 * bass + 0.1 * air)
     elif name == "dissolve":
@@ -95,7 +113,8 @@ def write_audio(selected=()):
     SOUNDS.mkdir(parents=True, exist_ok=True)
     cues = {"summon": 1.7, "gather": 1.1, "charge": 5.78, "descent": 0.82, "impact": 3.1,
             "shockwave": 1.2, "fracture": 0.9, "ambient": 3.8, "dissolve": 1.8, "debris": 1.75, "rumble": 6.4, "release": 2.25,
-            "divine_arc": 2.4, "crimson_arc": 1.55, "golden_flow": 2.3, "residual_arc": 1.32}
+            "divine_arc": 2.4, "crimson_arc": 1.55, "golden_flow": 2.3, "residual_arc": 1.32, "sovereign_current": 2.2, "sovereign_crown": 2.8,
+            "sovereign_release": 3.4}
     for i, (name, duration) in enumerate(cues.items()):
         if selected and name not in selected:
             continue

@@ -1,4 +1,7 @@
 {
+  "subtitles.minecraftmod.sovereign_current": "Scarlet currents converge",
+  "subtitles.minecraftmod.sovereign_crown": "Scarlet crown manifests",
+  "subtitles.minecraftmod.sovereign_release": "Scarlet authority is unleashed",
   "key.categories.minecraftmod": "Celestia: Divine Authority",
   "key.minecraftmod.cast": "Summon Celestial Nail",
   "key.minecraftmod.hex": "Scarlet Hex / hold for spell wheel",
@@ -49,6 +52,7 @@
   "block.minecraftmod.scarlet_stone": "Scarlet-Fractured Stone",
   "subtitles.minecraftmod.darkhold_cast": "The Darkhold whispers",
   "subtitles.minecraftmod.chaos_dissolve": "Chaos magic curls inward",
+  "key.minecraftmod.sovereignty": "Scarlet Sovereignty / sneak for Reality Command",
   "key.minecraftmod.darkhold_secondary": "Darkhold spell action",
   "block.minecraftmod.arcane_platform": "Temporary Arcane Platform",
   "block.minecraftmod.blight_log": "Blackened Trunk",

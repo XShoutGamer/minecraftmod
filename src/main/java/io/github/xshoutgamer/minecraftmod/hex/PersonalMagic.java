@@ -80,7 +80,7 @@ public final class PersonalMagic {
             return;
         }
         if (now < state.next) return;
-        state.next = now + 8;
+        state.next = now + ScarletSovereignty.recovery(player, 8);
         if (packet.action() == SECONDARY) {
             secondary(player, state, packet.spell(), now);
             return;
@@ -172,7 +172,7 @@ public final class PersonalMagic {
         var eclipse = state.fields.get(Power.ECLIPSE);
         boolean boosted = eclipse != null && eclipse.contains(player.position()) && power.ordinal() < Power.DREAM.ordinal();
         double scale = (enhanced ? 1.5 : 1) * (1 + charge * .4F) * (boosted ? 1.35 : 1)
-                * (state.attunement == Attunement.REACH ? 1.32 : 1);
+                * (state.attunement == Attunement.REACH ? 1.32 : 1) * ScarletSovereignty.reach(player);
         Vec3 at = HexAbilities.aim(player, HexConfig.DISINTEGRATION_RANGE.get() * scale);
         float radius = (float) (9 * scale);
         switch (power) {
@@ -205,7 +205,7 @@ public final class PersonalMagic {
                 at = player.position();
                 state.mirrorGate = null;
                 radius = (float) (23 * scale);
-                message(player, "Mirror Reality · U places gates. Crouch + U creates a platform.");
+                message(player, "Mirror Reality · I places gates. Crouch + I creates a platform.");
             }
             case VOID -> {
                 radius = (float) (HexConfig.VOID_RADIUS.get() * (.48 + .52 * charge) * (enhanced ? 1.25 : 1)
@@ -256,8 +256,8 @@ public final class PersonalMagic {
         state.fields.put(power, new Field(at, now, now + duration, radius, charge));
         syncFlight(player, state);
         if (power == Power.SCRIPTURE) {
-            state.scriptureReady = now + HexConfig.SCRIPTURE_COOLDOWN.get();
-            message(player, "Forbidden Scripture · U builds a platform while Creation is active.");
+            state.scriptureReady = now + ScarletSovereignty.recovery(player, HexConfig.SCRIPTURE_COOLDOWN.get());
+            message(player, "Forbidden Scripture · I builds a platform while Creation is active.");
         }
         if (power == Power.LIBRARY) {
             var floor = player.blockPosition().below();
@@ -265,10 +265,10 @@ public final class PersonalMagic {
             for (var direction : net.minecraft.core.Direction.Plane.HORIZONTAL) {
                 DarkholdFields.platform(player, floor.relative(direction, 5).above(), 1, duration);
             }
-            message(player, "Astral Library · U opens the altar, crouch + U restores nearby recorded blocks.");
+            message(player, "Astral Library · I opens the altar, crouch + I restores nearby recorded blocks.");
         }
         if (power == Power.ECLIPSE) {
-            message(player, "Eternal Eclipse · U opens Shadow Passage.");
+            message(player, "Eternal Eclipse · I opens Shadow Passage.");
             HexDomains.sound(player, at, MinecraftMod.ECLIPSE_SOUND.get(), 1.15F, 1);
         }
         if (!dynamic(power)) scene(player, POWER_FX, power.ordinal(), hand(player), at, now, duration, radius);

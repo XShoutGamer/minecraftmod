@@ -58,17 +58,26 @@ Dreamwalker uses the player's existing avatar and returns it to an anchor if saf
 
 ### Darkhold field actions
 
-Keep the spell selected after casting with **K**, then use **U** for its field action. You can rebind **U** in Minecraft Controls.
+Keep the spell selected after casting with **K**, then use **I** for its field action. You can rebind **I** in Minecraft Controls.
 
 | Spell | Gameplay |
 | --- | --- |
-| Eternal Eclipse | Creates a local darkness field with hostile-mob pulses, personal healing and speed, damage reduction, projectile interception, and increased independent spell reach. **U** performs Shadow Passage to a safe point in the field. |
-| Mirror Reality | Creates a field in the current dimension. It reflects approaching projectiles near the caster. **U** links the origin to a safe targeted landing spot. Walk into a gate to travel. **Crouch + U** places temporary solid platforms where terrain edits are permitted. |
+| Eternal Eclipse | Creates a local darkness field with hostile-mob pulses, personal healing and speed, damage reduction, projectile interception, and increased independent spell reach. **I** performs Shadow Passage to a safe point in the field. |
+| Mirror Reality | Creates a field in the current dimension. It reflects approaching projectiles near the caster. **I** links the origin to a safe targeted landing spot. Walk into a gate to travel. **Crouch + I** places temporary solid platforms where terrain edits are permitted. |
 | Void Singularity | Hold **K** to increase pull radius and damage. Its field pulls mobs, items, and supported projectiles. Hostile mobs take repeated damage near the core. |
-| Astral Library | Creates a sanctuary with a temporary placement-permitted platform, healing, and defense. **U** opens the altar for reach, duration, recovery, or restoration attunements. **Crouch + U** restores nearby journaled blocks. |
-| Forbidden Scripture | Manifests four formations for Dominion damage and slowing, Protection, Transcendence flight and speed, and Creation platforms with **U**. The default duration is 60 seconds before charge and attunement bonuses. |
+| Astral Library | Creates a sanctuary with a temporary placement-permitted platform, healing, and defense. **I** opens the altar for reach, duration, recovery, or restoration attunements. **Crouch + I** restores nearby journaled blocks. |
+| Forbidden Scripture | Manifests four formations for Dominion damage and slowing, Protection, Transcendence flight and speed, and Creation platforms with **I**. The default duration is 60 seconds before charge and attunement bonuses. |
 
 Reality Rewrite corruption spreads with its visual wave. At 20 TPS, a quick cast takes about one second and a fully charged default cast takes six seconds when terrain edits keep up. The wave waits if a dense cast reaches the per-tick budget. Set `rewriteCorruptionEditsPerTick` to tune that budget, which defaults to 512 blocks. Configure inner, middle, and edge coverage and initial or periodic mob damage in `minecraftmod-hex-server.toml`. The Scarlet palette uses custom blackened wood, planks, soil, sand, bricks, and stone. It physically removes eligible foliage within the cast and journals the changed positions for Genesis. Canopies are selected by position and block tags. Blocks outside the cast keep their foliage, and inventories and unrecorded changes stay outside Genesis's journal. Temporary platforms use saved block ticks for expiration.
+
+## Scarlet Sovereignty
+
+- Tap **U** to release Scarlet Sovereignty at its standard radius of 60 blocks. Hold U for up to seven seconds to build to 150 blocks. The charge levitates you and draws crimson currents into the crown and mantle. You can hold the completed transformation until release. Open a menu while charging to cancel.
+- During the 30-second reign, **Shift + U** commands your target. Aim at a hostile mob to capture it, at a journaled area to reconstruct it, or at solid terrain to place a temporary platform where you have terrain-edit permission. Aim at the sky for a suspended scarlet formation. Tap **U** again to dismiss and start the five-second collapse.
+- The ultimate works independently of the Hex and Darkhold. It suspends and damages hostile mobs, intercepts hostile-owned projectiles near the caster, and grants flight, protection, regeneration, speed, and stronger spell reach and recovery by default. The dedicated server config controls radius, timing, damage, protection, and constructs. Creative hostile dissolution requires operator permissions and is off by default.
+- In the Hex client config, enable `cinematicCamera` for an automatic third-person view while charging. The mantle, throne, and release inversion have separate controls. Inversion defaults to off and respects reduced-flash mode. If an existing Controls profile still assigns **U** to the Darkhold spell action, rebind that action to **I**.
+
+Genesis uses `genesisSpeed` in the Hex server config. **Divine** (the default) restores up to 1,024 positions per tick per dimension, **Rapid** up to 384, and **Cinematic** up to 64. Work is interleaved across chunks while local reconstruction effects play independently. Genesis needs valid journal entries and only restores loaded blocks still matching the recorded replacement. Past changes made permanent through `/hexterrain keep` stay permanent.
 
 ## Configuration
 
