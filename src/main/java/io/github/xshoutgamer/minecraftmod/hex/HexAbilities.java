@@ -287,7 +287,7 @@ final class HexAbilities {
                 changedBlocks = 0;
                 waveOrigin = eye;
                 corruptionRadius = radius;
-                waveDuration = Math.max(68, radius * 5);
+                waveDuration = restoring ? Math.max(68, radius * 5) : Math.max(20, radius * 2);
                 corrupted.clear();
                 sendRewriteWave(player, now, 1, false);
             }
@@ -380,10 +380,10 @@ final class HexAbilities {
         }
         if (terrainWork != null && domain.gameplay()) {
             var journal = HexTerrain.get(level);
-            int budget = HexConfig.EDITS.get();
+            boolean wave = waveOrigin != null;
+            int budget = wave && !restoring ? HexConfig.CORRUPTION_EDITS.get() : HexConfig.EDITS.get();
             int edits = 0;
             int scanLimit = restoring ? budget : budget * 12;
-            boolean wave = waveOrigin != null;
             var shape = restoring ? HexConfig.Volume.SPHERE : workShape;
             float scheduledRadius = wave ? rewriteFront(corruptionRadius, waveDuration, now - workStart) : 0;
             Vec3 changedAt = null;

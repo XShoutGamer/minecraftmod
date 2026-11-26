@@ -25,7 +25,7 @@ public final class HexConfig {
     public static final ModConfigSpec.BooleanValue HAND_MASK, HAND_ANIMATION, HAND_PERIPHERAL;
     public static final ModConfigSpec.EnumValue<Target> TARGET;
     public static final ModConfigSpec.IntValue RADIUS, ULTRA_RADIUS, EXPANSION, COLLAPSE, LIFE, COOLDOWN_PERCENT, TELEKINESIS_LIMIT,
-            TELEKINESIS_RANGE, EDITS, TEMPORAL_TICKS, RUNE_RADIUS;
+            TELEKINESIS_RANGE, EDITS, CORRUPTION_EDITS, TEMPORAL_TICKS, RUNE_RADIUS;
     private static final ModConfigSpec.IntValue RECORD_LIMIT, LEGACY_RECORD_LIMIT;
     public static final ModConfigSpec.IntValue DISINTEGRATION_RANGE, DISINTEGRATION_AREA;
     public static final ModConfigSpec.DoubleValue DISINTEGRATION_DAMAGE;
@@ -71,6 +71,8 @@ public final class HexConfig {
         REWRITE_SECONDS = server.comment("Zero leaves changes until Genesis restores them.").defineInRange("rewriteTemporarySeconds", 0, 0, 3600);
         RECORD_NAIL = server.comment("Record future Celestial Nail excavation for Genesis, within the journal limit.").define("recordNailExcavation", false);
         EDITS = server.defineInRange("terrainEditsPerTick", 24, 1, 128);
+        CORRUPTION_EDITS = server.comment("Block edit budget per tick for each active Reality Rewrite corruption wave.")
+                .defineInRange("rewriteCorruptionEditsPerTick", 512, 1, 1024);
         RECORD_LIMIT = server.comment("Undo records per dimension. Zero uses 262144 or a customized legacy limit.")
                 .defineInRange("terrainJournalLimit", 0, 0, 300000);
         LEGACY_RECORD_LIMIT = server.comment("Legacy journal limit. Set terrainJournalLimit to override it.")
