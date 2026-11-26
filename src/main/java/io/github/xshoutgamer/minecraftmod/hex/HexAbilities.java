@@ -38,12 +38,21 @@ final class HexAbilities {
     private HexSpell charging;
     private long chargeStart;
     private double liftDistance;
-    private int runeMode, gravityMode, barrierMode;
+    private int runeMode, gravityMode, barrierMode, anchorSelection;
+    private static final net.minecraft.resources.ResourceKey<net.minecraft.world.damagesource.DamageType> ORB_DAMAGE =
+            net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DAMAGE_TYPE,
+                    MinecraftMod.id("chaos_orb"));
+    private static final String ANCHORS = "minecraftmod.hexAnchors";
     private Vec3 barrierAnchor;
     private Vec3 orb, velocity;
     private long orbEnd;
+    private float orbCharge;
+    private Vec3 echoPosition;
+    private boolean echoStationary;
+    private long echoEnd;
     private Deque<BlockPos> terrainWork;
-    private boolean restoring;
+    private boolean restoring, reportWork;
+    private int changedBlocks;
     boolean ascended;
 
     static Vec3 aim(ServerPlayer player, double range) {
@@ -65,13 +74,14 @@ final class HexAbilities {
             player.displayClientMessage(Component.literal("Return to your Scarlet Hex to cast."), true);
             return;
         }
-        if (runes.stream().anyMatch(rune -> rune.kind == Rune.SILENCE && player.position().distanceTo(rune.at) < HexConfig.RUNE_RADIUS.get())
-                && spell != HexSpell.RUNES && domain.gameplay()) {
+        if (HexDomains.silenced(player) && spell != HexSpell.RUNES && domain.gameplay()) {
             player.displayClientMessage(Component.literal("The Silence Rune is suppressing your spells."), true);
             return;
         }
         var eye = hand(player);
         var target = aim(player, HexConfig.TELEKINESIS_RANGE.get() * domain.scale());
+        if (HexConfig.DEBUG.get()) player.displayClientMessage(Component.literal(
+                spell.title + " → " + BlockPos.containing(target).toShortString()), true);
         HexDomains.sound(player, eye, MinecraftMod.HEX_CAST.get(), .75F, .74F + spell.ordinal() * .048F);
         if (spell.sustained) {
             if (spell == HexSpell.BARRIER && player.isShiftKeyDown()) {
@@ -103,10 +113,22 @@ final class HexAbilities {
                 scene(player, spell, ascended ? 1 : 0, eye, player.position(), now, 35, 3);
             }
             case FRACTURE -> {
-                var anchor = runes.stream().filter(rune -> rune.kind == Rune.TELEPORTATION).findFirst();
-                var destination = anchor.map(PlacedRune::at).orElse(target);
+                var anchors = anchors(player);
+                if (player.isShiftKeyDown()) {
+                    anchorSelection = (anchorSelection + 1) % (anchors.size() + 1);
+                    feedback(player, anchorSelection == 0 ? "Rift destination: crosshair"
+                            : "Rift destination: rune " + anchors.get(anchorSelection - 1).getString("Id"));
+                    return;
+                }
+                if (anchorSelection > anchors.size()) anchorSelection = 0;
+                var destination = anchorSelection == 0 ? target
+                        : Vec3.atBottomCenterOf(BlockPos.of(anchors.get(anchorSelection - 1).getLong("Pos")));
                 var safe = safeArrival(player, destination);
-                if (domain.gameplay() && safe != null) player.connection.teleport(safe.x, safe.y, safe.z, player.getYRot(), player.getXRot());
+                if (domain.gameplay() && safe == null) {
+                    feedback(player, "Reality Fracture could not find a safe destination.");
+                    return;
+                }
+                if (domain.gameplay()) player.connection.teleport(safe.x, safe.y, safe.z, player.getYRot(), player.getXRot());
                 scene(player, spell, 0, eye, safe == null ? destination : safe, now, 68, 4);
             }
             case RUNES -> {
@@ -116,6 +138,20 @@ final class HexAbilities {
                 } else {
                     if (runes.size() == 5) runes.removeFirst();
                     long id = now;
+                    if (Rune.values()[runeMode] == Rune.RESTORATION && domain.gameplay()
+                            && HexTerrain.get(player.serverLevel()).restoration(player.getUUID(), BlockPos.containing(target),
+                                    HexConfig.RUNE_RADIUS.get()).isEmpty()) {
+                        feedback(player, "This area has no recorded changes to restore.");
+                        return;
+                    }
+                    if (Rune.values()[runeMode] == Rune.TELEPORTATION && domain.gameplay()) {
+                        var safe = safeArrival(player, target);
+                        if (safe == null) {
+                            feedback(player, "Teleportation Rune needs a safe landing spot.");
+                            return;
+                        }
+                        saveAnchor(player, BlockPos.containing(safe));
+                    }
                     runes.add(new PlacedRune(Rune.values()[runeMode], target.add(0, .18, 0), id));
                     scene(player, HexNetwork.RUNE_FX, runeMode, eye, target.add(0, .18, 0), id, 24, HexConfig.RUNE_RADIUS.get());
                 }
@@ -123,19 +159,28 @@ final class HexAbilities {
             case TEMPORAL, GRAVITY -> {
                 if (spell == HexSpell.GRAVITY && player.isShiftKeyDown()) gravityMode = (gravityMode + 1) % 4;
                 int ticks = spell == HexSpell.TEMPORAL ? HexConfig.TEMPORAL_TICKS.get() : 110;
-                float radius = (float) ((spell == HexSpell.TEMPORAL ? 16 : 14) * domain.scale());
+                float radius = (float) ((spell == HexSpell.TEMPORAL ? HexConfig.TEMPORAL_RADIUS.get() : HexConfig.GRAVITY_RADIUS.get()) * domain.scale());
                 fields.removeIf(field -> field.spell == spell);
                 fields.add(new Field(spell, target, now + ticks, gravityMode, radius));
                 scene(player, spell, gravityMode, eye, target, now, ticks, radius);
             }
             case ECHO -> {
-                fields.removeIf(field -> field.spell == spell);
-                fields.add(new Field(spell, player.position(), now + 220, player.isShiftKeyDown() ? 1 : 0, 3));
+                echoPosition = player.position();
+                echoStationary = player.isShiftKeyDown();
+                echoEnd = now + HexConfig.ECHO_LIFE.get();
             }
             case GENESIS -> {
                 if (domain.gameplay()) {
-                    terrainWork = HexTerrain.get(player.serverLevel()).restoration(player.getUUID(), BlockPos.containing(target), 28 * domain.scale());
+                    terrainWork = HexTerrain.get(player.serverLevel()).restoration(player.getUUID(), BlockPos.containing(target), HexConfig.GENESIS_RADIUS.get() * domain.scale());
+                    if (terrainWork.isEmpty()) {
+                        terrainWork = null;
+                        feedback(player, "Genesis found no recorded changes near your target.");
+                        return;
+                    }
                     restoring = true;
+                    reportWork = true;
+                    changedBlocks = 0;
+                    if (HexConfig.DEBUG.get()) feedback(player, "Genesis queued " + terrainWork.size() + " blocks.");
                 }
                 scene(player, spell, 0, eye, target, now, 100, (float) (22 * domain.scale()));
             }
@@ -153,7 +198,7 @@ final class HexAbilities {
         var spell = charging;
         charging = null;
         readyAt[spell.ordinal()] = now + cooldown(spell);
-        float strength = Math.clamp((now - chargeStart) / 45F, .12F, 1);
+        float strength = Math.clamp((now - chargeStart) / (float) HexConfig.ORB_CHARGE.get(), .12F, 1);
         var eye = hand(player);
         var target = aim(player, HexConfig.TELEKINESIS_RANGE.get() * domain.scale());
         switch (spell) {
@@ -169,10 +214,21 @@ final class HexAbilities {
                 held.clear();
             }
             case REWRITE -> {
-                int radius = (int) ((4 + Math.round(strength * 9)) * domain.scale());
+                int radius = (int) (net.minecraft.util.Mth.lerp(strength, 2, HexConfig.REWRITE_RADIUS.get()) * domain.scale());
                 if (domain.gameplay() && HexConfig.EDIT.get() && player.hasPermissions(2)) {
-                    terrainWork = HexTerrain.patch(BlockPos.containing(target.add(0, -.03, 0)), radius);
-                    restoring = false;
+                    var center = BlockPos.containing(target.add(0, -.03, 0));
+                    restoring = HexConfig.REWRITE.get() == HexConfig.Rewrite.NATURAL;
+                    terrainWork = restoring ? HexTerrain.get(player.serverLevel()).restoration(player.getUUID(), center, radius)
+                            : HexTerrain.patch(center, radius);
+                    if (terrainWork.isEmpty()) {
+                        terrainWork = null;
+                        feedback(player, "Natural Restoration found no recorded changes in this patch.");
+                        return;
+                    }
+                    reportWork = true;
+                    changedBlocks = 0;
+                } else if (domain.gameplay()) {
+                    feedback(player, "Reality Rewrite is cosmetic here. Terrain edits require the server setting and operator permission.");
                 }
                 scene(player, spell, 0, eye, target, now, 68, radius);
             }
@@ -180,7 +236,7 @@ final class HexAbilities {
                 orb = eye;
                 orbEnd = now + 32;
                 velocity = player.getLookAngle().scale(1.4 + strength * 1.1);
-                scene(player, spell, 2, eye, target, now, 10, 1 + strength);
+                orbCharge = strength;
             }
             case BARRIER -> scene(player, HexNetwork.BARRIER_FX, 1, eye, player.position(), now, 14, 3.5F);
             default -> throw new IllegalStateException("Unexpected sustained spell " + spell);
@@ -219,7 +275,7 @@ final class HexAbilities {
                 if (domain.gameplay()) barrier(player, center, radius, now);
                 if (now % 3 == 0) scene(player, HexNetwork.BARRIER_FX, barrierMode + 3, eye, center, now, 7, radius);
             } else if (now % 3 == 0) {
-                float growth = Math.clamp((now - chargeStart) / 45F, .15F, 1F);
+                float growth = Math.clamp((now - chargeStart) / (float) HexConfig.ORB_CHARGE.get(), .15F, 1F);
                 HexDomains.scene(player, HexNetwork.HAND_FX, charging.ordinal(), eye, eye.add(player.getLookAngle()), now, 7, growth);
             }
         }
@@ -230,15 +286,10 @@ final class HexAbilities {
         }
         fields.removeIf(field -> now >= field.end);
         for (var field : fields) {
-            if (field.spell == HexSpell.ECHO) {
-                if (now % 4 == 0) {
-                    var at = field.variant == 1 ? field.at : player.position().add(player.getLookAngle().cross(new Vec3(0, 1, 0)).scale(2.5));
-                    scene(player, field.spell, field.variant, eye, at, now, 9, field.radius);
-                }
-            } else if (domain.gameplay()) {
-                applyField(player, field.at, field.radius, field.spell == HexSpell.TEMPORAL ? -1 : field.variant);
-            }
+            if (domain.gameplay()) applyField(player, field.at, field.radius, field.spell == HexSpell.TEMPORAL ? -1 : field.variant);
         }
+        tickEcho(domain, player, now);
+        runes.removeIf(rune -> now - rune.created >= HexConfig.RUNE_LIFE.get() * 20L);
         Vec3 previousRune = null;
         for (var rune : runes) {
             var radius = HexConfig.RUNE_RADIUS.get();
@@ -251,16 +302,23 @@ final class HexAbilities {
             if (rune.kind == Rune.RESTORATION && now % 20 == 0 && terrainWork == null) {
                 terrainWork = HexTerrain.get(level).restoration(player.getUUID(), BlockPos.containing(rune.at), radius);
                 restoring = true;
+                reportWork = false;
+                changedBlocks = 0;
             }
         }
         if (terrainWork != null && domain.gameplay()) {
             var journal = HexTerrain.get(level);
             for (int i = 0; i < HexConfig.EDITS.get() && !terrainWork.isEmpty(); i++) {
                 var pos = terrainWork.removeFirst();
-                if (restoring) journal.restore(player, pos);
-                else journal.rewrite(player, pos);
+                if (restoring) changedBlocks += journal.restore(player, pos) ? 1 : 0;
+                else changedBlocks += journal.rewrite(player, pos);
             }
-            if (terrainWork.isEmpty()) terrainWork = null;
+            if (terrainWork.isEmpty()) {
+                if (reportWork) feedback(player, (restoring ? "Genesis restored " : "Reality Rewrite changed ") + changedBlocks + " blocks.");
+                terrainWork = null;
+                reportWork = false;
+                changedBlocks = 0;
+            }
         }
     }
 
@@ -290,14 +348,128 @@ final class HexAbilities {
         var block = level.clip(new ClipContext(orb, next, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
         var end = block.getType() == HitResult.Type.MISS ? next : block.getLocation();
         var hit = ProjectileUtil.getEntityHitResult(level, player, orb, end, new AABB(orb, end).inflate(.8),
-                entity -> entity instanceof LivingEntity && eligible(player, entity));
+                entity -> entity instanceof LivingEntity living && orbEligible(player, living));
         if (hit != null) end = hit.getLocation();
         boolean struck = hit != null || block.getType() != HitResult.Type.MISS;
-        if (struck && domain.gameplay() && !HexConfig.DEMO_ORBS.get() && hit != null) {
-            hit.getEntity().hurt(level.damageSources().playerAttack(player), (float) ((4 + velocity.lengthSqr()) * domain.scale()));
-        }
-        scene(player, HexNetwork.ORB_FX, struck ? 1 : 0, orb, end, now, struck ? 16 : 5, struck ? 3 : 1.25F);
+        float blast = domain.phase == HexNetwork.ENHANCED ? HexConfig.ORB_ENHANCED_RADIUS.get()
+                : net.minecraft.util.Mth.lerp(orbCharge, HexConfig.ORB_RADIUS.get(),
+                        Math.max(HexConfig.ORB_RADIUS.get(), HexConfig.ORB_MAX_RADIUS.get()));
+        if (struck && domain.gameplay() && !HexConfig.DEMO_ORBS.get()) detonate(player, end, blast, orbCharge, domain.scale());
+        scene(player, HexNetwork.ORB_FX, struck ? 1 : 0, orb, end, now, struck ? 45 : 5, struck ? blast * 1.16F : 1.25F);
         orb = struck ? null : next;
+    }
+
+    static int detonate(ServerPlayer player, Vec3 at, double radius, float charge, double scale) {
+        var level = player.serverLevel();
+        var source = level.damageSources().source(ORB_DAMAGE, player, player);
+        int affected = 0;
+        for (var victim : level.getEntitiesOfClass(LivingEntity.class, new AABB(at, at).inflate(radius),
+                living -> orbEligible(player, living))) {
+            var away = victim.getBoundingBox().getCenter().subtract(at);
+            double strength = 1 - away.length() / radius;
+            if (strength <= 0 || victim.isInvulnerableTo(source)) continue;
+            if (HexConfig.ORB_DAMAGE.get() > 0) {
+                victim.hurt(source, (float) (HexConfig.ORB_DAMAGE.get() * (.45 + charge * .55) * scale * strength));
+            }
+            if (HexConfig.ORB_PUSH.get() > 0) {
+                victim.knockback(HexConfig.ORB_PUSH.get() * strength, -away.x, -away.z);
+                if (victim instanceof ServerPlayer) victim.hurtMarked = true;
+            }
+            affected++;
+        }
+        if (HexConfig.ORB_TERRAIN.get() && player.hasPermissions(2)) HexTerrain.get(level).orbScorch(player, at, radius);
+        if (HexConfig.DEBUG.get()) feedback(player, "Chaos Orb contacted " + affected + " eligible entities.");
+        HexDomains.sound(player, at, MinecraftMod.HEX_EXPAND.get(), 1.5F, .83F);
+        return affected;
+    }
+
+    private static boolean orbEligible(ServerPlayer player, LivingEntity living) {
+        if (!living.isAlive() || living.isSpectator() || !player.serverLevel().mayInteract(player, living.blockPosition())) return false;
+        if (living == player) return HexConfig.ORB_SELF.get() && !player.isCreative();
+        if (living instanceof ServerPlayer other) {
+            return HexConfig.ORB_PLAYERS.get() && !other.isCreative() && player.canHarmPlayer(other);
+        }
+        return !player.isAlliedTo(living) && !(living instanceof net.minecraft.world.entity.TamableAnimal pet && pet.isOwnedBy(player));
+    }
+
+    private void tickEcho(HexDomains.Domain domain, ServerPlayer player, long now) {
+        if (echoPosition == null) return;
+        if (now >= echoEnd) {
+            echoPosition = null;
+            return;
+        }
+        var level = player.serverLevel();
+        var desired = player.position().add(player.getLookAngle().cross(new Vec3(0, 1, 0)).scale(2.5));
+        if (!echoStationary) echoPosition = echoPosition.distanceToSqr(desired) > 32 * 32 ? desired : echoPosition.lerp(desired, .19);
+        if (!level.hasChunkAt(BlockPos.containing(echoPosition))) return;
+        if (now % 3 == 0) scene(player, HexSpell.ECHO, echoStationary ? 1 : 0, hand(player), echoPosition, now, 8, 3);
+        if (domain.gameplay() && HexConfig.ECHO_GUARD.get() && now % 3 == 0) {
+            barrier(player, echoPosition.add(0, 1, 0), 2.2F, now);
+        }
+        if (domain.gameplay() && HexConfig.ECHO_ATTACK.get() && now % 15 == 0) {
+            double range = HexConfig.ECHO_RANGE.get();
+            var eye = echoPosition.add(0, 1.36, 0);
+            var hostile = level.getEntitiesOfClass(Mob.class, new AABB(eye, eye).inflate(range),
+                    mob -> mob instanceof Enemy && eligible(player, mob) && mob.distanceToSqr(eye) < range * range
+                            && level.clip(new ClipContext(eye, mob.getEyePosition(), ClipContext.Block.COLLIDER,
+                                    ClipContext.Fluid.NONE, player)).getType() == HitResult.Type.MISS)
+                    .stream().min(java.util.Comparator.comparingDouble(mob -> mob.distanceToSqr(eye))).orElse(null);
+            if (hostile != null) {
+                hostile.hurt(level.damageSources().indirectMagic(player, player), (float) (4 * domain.scale()));
+                if (now % 45 == 15) {
+                    hostile.knockback(.64, eye.x - hostile.getX(), eye.z - hostile.getZ());
+                } else {
+                    hostile.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 24, 1, true, false));
+                }
+                scene(player, HexNetwork.ORB_FX, 0, eye, hostile.getEyePosition(), now, 5, .54F);
+            }
+        }
+    }
+
+    boolean runeApplies(ServerPlayer owner, ServerPlayer target, boolean silence) {
+        long now = owner.level().getGameTime();
+        if (owner.level() != target.level()) return false;
+        if (!silence && owner != target && !owner.isAlliedTo(target)) return false;
+        if (silence && (owner == target || owner.isAlliedTo(target))) return false;
+        return runes.stream().anyMatch(rune -> rune.kind == (silence ? Rune.SILENCE : Rune.PROTECTION)
+                && now - rune.created < HexConfig.RUNE_LIFE.get() * 20L
+                && target.distanceToSqr(rune.at) < Math.pow(HexConfig.RUNE_RADIUS.get(), 2));
+    }
+
+    private static List<net.minecraft.nbt.CompoundTag> anchors(ServerPlayer player) {
+        var dimension = player.level().dimension().location().toString();
+        return player.getPersistentData().getCompound(Player.PERSISTED_NBT_TAG).getList(ANCHORS, net.minecraft.nbt.Tag.TAG_COMPOUND)
+                .stream().map(tag -> (net.minecraft.nbt.CompoundTag) tag)
+                .filter(tag -> tag.getString("Dimension").equals(dimension)).toList();
+    }
+
+    private void saveAnchor(ServerPlayer player, BlockPos pos) {
+        var data = player.getPersistentData();
+        var persistent = data.getCompound(Player.PERSISTED_NBT_TAG);
+        var anchors = persistent.getList(ANCHORS, net.minecraft.nbt.Tag.TAG_COMPOUND);
+        var dimension = player.level().dimension().location().toString();
+        for (var value : anchors) {
+            var anchor = (net.minecraft.nbt.CompoundTag) value;
+            if (anchor.getLong("Pos") == pos.asLong() && anchor.getString("Dimension").equals(dimension)) {
+                feedback(player, "Existing teleportation rune " + anchor.getString("Id") + ".");
+                return;
+            }
+        }
+        var anchor = new net.minecraft.nbt.CompoundTag();
+        var id = java.util.UUID.randomUUID().toString().substring(0, 8);
+        anchor.putString("Id", id);
+        anchor.putLong("Pos", pos.asLong());
+        anchor.putString("Dimension", dimension);
+        if (anchors.size() >= 12) anchors.removeFirst();
+        anchors.add(anchor);
+        persistent.put(ANCHORS, anchors);
+        data.put(Player.PERSISTED_NBT_TAG, persistent);
+        anchorSelection = anchors(player).size();
+        feedback(player, "Saved teleportation rune " + id + ".");
+    }
+
+    private static void feedback(ServerPlayer player, String text) {
+        player.displayClientMessage(Component.literal(text), true);
     }
 
     private static Vec3 safeArrival(ServerPlayer player, Vec3 target) {
@@ -310,7 +482,10 @@ final class HexAbilities {
                     if (level.isOutsideBuildHeight(pos.above()) || !level.hasChunkAt(pos)
                             || !level.getWorldBorder().isWithinBounds(pos) || !level.mayInteract(player, pos)
                             || !level.getBlockState(pos.below()).isFaceSturdy(level, pos.below(), net.minecraft.core.Direction.UP)
-                            || !level.getFluidState(pos).isEmpty() || !level.getFluidState(pos.above()).isEmpty()) continue;
+                            || !level.getFluidState(pos).isEmpty() || !level.getFluidState(pos.above()).isEmpty()
+                            || level.getBlockState(pos).is(net.minecraft.world.level.block.Blocks.POWDER_SNOW)
+                            || level.getBlockState(pos).is(net.minecraft.tags.BlockTags.FIRE)
+                            || level.getBlockState(pos.below()).is(net.minecraft.world.level.block.Blocks.MAGMA_BLOCK)) continue;
                     var feet = Vec3.atBottomCenterOf(pos);
                     if (level.noCollision(player, player.getBoundingBox().move(feet.subtract(player.position())))) return feet;
                 }
@@ -333,23 +508,26 @@ final class HexAbilities {
     }
 
     private static void applyField(ServerPlayer player, Vec3 center, float radius, int variant) {
-        for (var entity : player.level().getEntities(player, new AABB(center, center).inflate(radius),
-                entity -> eligible(player, entity) && entity.distanceToSqr(center) < radius * radius)) {
-            var motion = entity.getDeltaMovement();
-            double gravity = HexConfig.GRAVITY.get();
+        var candidates = player.level().getEntities(player, new AABB(center, center).inflate(radius),
+                entity -> eligible(player, entity) && entity.distanceToSqr(center) < radius * radius);
+        candidates.sort(java.util.Comparator.comparingDouble(entity -> entity.distanceToSqr(center)));
+        for (var entity : candidates.subList(0, Math.min(candidates.size(), HexConfig.FIELD_LIMIT.get()))) {
             if (variant < 0) {
                 if (entity instanceof Mob mob && !(mob instanceof Enemy)) continue;
-                steer(entity, motion.scale(.22));
-                if (entity instanceof LivingEntity mob) mob.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 8, 5, true, false));
+                HexDomains.slow(player, entity);
                 continue;
             }
+            var motion = entity.getDeltaMovement();
+            double gravity = HexConfig.GRAVITY.get();
             var toward = center.subtract(entity.position());
             var orbit = new Vec3(-toward.z, 0, toward.x).normalize().scale(.31);
+            double height = center.y + 3.5 + Math.sin(entity.getId() * 1.71) * 1.2;
+            double lift = Math.clamp((height - entity.getY()) * .16 + gravity, -.24, .62);
             steer(entity, switch (variant) {
-                case 0 -> motion.add(0, gravity * .6, 0);
-                case 1 -> motion.scale(.36).add(0, .045, 0);
-                case 2 -> motion.scale(.68).add(0, gravity, 0);
-                default -> orbit.add(toward.scale(.026)).add(0, gravity, 0);
+                case 0 -> new Vec3(motion.x * .56, lift, motion.z * .56);
+                case 1 -> new Vec3(motion.x * .32, lift * .64, motion.z * .32);
+                case 2 -> orbit.scale(1.35).add(0, lift + .12, 0);
+                default -> orbit.add(toward.x * .031, lift, toward.z * .031);
             });
         }
     }
@@ -385,6 +563,7 @@ final class HexAbilities {
         runes.clear();
         charging = null;
         orb = null;
+        echoPosition = null;
         terrainWork = null;
         ascended = false;
         resetFlight(player);

@@ -16,12 +16,19 @@ final class NailMesh {
     private final VertexConsumer consumer;
     private final boolean additive;
     private final float opacity;
+    private final java.util.function.ToDoubleFunction<Point> visibility;
 
     NailMesh(PoseStack poses, VertexConsumer consumer, boolean additive, float opacity) {
+        this(poses, consumer, additive, opacity, null);
+    }
+
+    NailMesh(PoseStack poses, VertexConsumer consumer, boolean additive, float opacity,
+             java.util.function.ToDoubleFunction<Point> visibility) {
         this.pose = poses.last();
         this.consumer = consumer;
         this.additive = additive;
         this.opacity = opacity;
+        this.visibility = visibility;
     }
 
     void quad(Point a, Point b, Point c, Point d, int color, float opacity) {
@@ -46,7 +53,8 @@ final class NailMesh {
     }
 
     private void vertex(Point p, int color, float intensity, float shade, float u, float v) {
-        float gain = Mth.clamp(intensity * opacity, 0, 1);
+        float mask = visibility == null ? 1 : (float) visibility.applyAsDouble(p);
+        float gain = Mth.clamp(intensity * opacity * mask, 0, 1);
         float rgb = additive ? gain : shade;
         consumer.addVertex(pose.pose(), p.x, p.y, p.z)
                 .setColor(((color >> 16) & 255) / 255F * rgb, ((color >> 8) & 255) / 255F * rgb,

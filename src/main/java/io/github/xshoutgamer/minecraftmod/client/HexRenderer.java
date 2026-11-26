@@ -1,6 +1,7 @@
 package io.github.xshoutgamer.minecraftmod.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.ByteBufferBuilder;
 import com.mojang.math.Axis;
 import io.github.xshoutgamer.minecraftmod.CelestiaConfig;
@@ -51,6 +52,7 @@ final class HexRenderer {
     private final float time;
     private final float glow;
     private final double clock;
+    private org.joml.Matrix4f handProjection;
     private final List<Smoke> clouds = new ArrayList<>();
 
     private HexRenderer(PoseStack pose, Camera camera, Vec3 origin, double clock) {
@@ -74,40 +76,100 @@ final class HexRenderer {
                     || domain.target().distanceTo(view.origin) < view.drawDistance()) view.domain(domain);
         }
         for (var scene : effects) {
+            var game = Minecraft.getInstance();
+            boolean localHands = game.player != null && game.options.getCameraType().isFirstPerson()
+                    && game.player.getUUID().equals(scene.owner());
+            if (localHands && scene.kind() == HexNetwork.HAND_FX) continue;
             if (scene.target().distanceTo(view.origin) < view.drawDistance() + scene.radius()
                     || scene.origin().distanceTo(view.origin) < view.drawDistance()) view.spell(scene);
         }
         view.finish();
     }
 
-    static void hands(RenderHandEvent event, boolean casting) {
+    static void hands(RenderHandEvent event, HexSpell spell, float charge) {
         var game = Minecraft.getInstance();
-        if (game.player == null) return;
-        var pose = event.getPoseStack();
-        HumanoidArm arm = event.getHand() == InteractionHand.MAIN_HAND ? game.player.getMainArm() : game.player.getMainArm().getOpposite();
-        var view = new HexRenderer(pose, game.gameRenderer.getMainCamera(),
-                Vec3.ZERO, HexClient.clock(event.getPartialTick()));
-        float side = arm == HumanoidArm.RIGHT ? 1 : -1;
-        pose.pushPose();
-        pose.translate(side * (.31 + event.getEquipProgress() * .24), -.28, -.66);
-        pose.mulPose(Axis.ZP.rotationDegrees(side * 14));
-        pose.scale(.37F, .37F, .37F);
-        view.aura(view.mesh(true), view.mesh(false), new Vec3(0, 0, 2), casting ? .98F : .62F, side * 2);
-        if (HexConfig.SMOKE.get() > 0) {
-            view.cloud(pose, new Smoke(Vec3.ZERO, 1.10F, 1.57F, casting ? .87F : .62F,
-                    casting ? 1 : .63F, arm == HumanoidArm.RIGHT ? .2F : .7F));
-            pose.translate(side * .3F, .21F, -.18F);
-            view.cloud(pose, new Smoke(Vec3.ZERO, .92F, 1.2F, .44F, .57F, side > 0 ? .66F : .39F));
+        if (game.player == null || !game.options.getCameraType().isFirstPerson()) return;
+        boolean animated = HexConfig.HAND_ANIMATION.get() && !CelestiaConfig.REDUCED_MOTION.get();
+        float swing = animated ? charge * .65F : 0;
+        // Vanilla can omit the empty offhand event. Draw both corner effects in the main hand pass.
+        if (event.getHand() != InteractionHand.MAIN_HAND) return;
+        var pose = new PoseStack();
+        var view = new HexRenderer(pose, game.gameRenderer.getMainCamera(), Vec3.ZERO, HexClient.clock(event.getPartialTick()));
+        var projection = RenderSystem.getProjectionMatrix();
+        var modelView = RenderSystem.getModelViewMatrix();
+        pose.mulPose(new org.joml.Matrix4f(modelView).invert());
+        view.handProjection = new org.joml.Matrix4f(projection).mul(modelView);
+        float xScale = 1 / Math.max(.1F, projection.m00());
+        float yScale = 1 / Math.max(.1F, projection.m11());
+        float visual = switch (HexConfig.HAND_PRESET.get()) {
+            case MINIMAL -> .55F;
+            case BALANCED -> .78F;
+            case CINEMATIC -> 1F;
+            case CINEMATIC_OVERDRIVE -> 1.23F;
+        };
+        for (int side : new int[]{-1, 1}) {
+            pose.pushPose();
+            float drift = animated ? Mth.sin(view.time * .14F + side * 2) * .015F : 0;
+            pose.translate(side * (HexConfig.HAND_X.get() + HexConfig.HAND_SPACING.get() + drift) * xScale,
+                    -(HexConfig.HAND_Y.get() + drift) * yScale, -1);
+            pose.mulPose(Axis.ZP.rotationDegrees(-side * (19 + swing * 9)));
+            float size = HexConfig.HAND_SCALE.get().floatValue() * (.14F + charge * .026F);
+            pose.scale(size * xScale, size * yScale, size * .50F);
+            var sparks = view.mesh(true);
+            var shadows = view.mesh(false);
+            float length = HexConfig.HAND_LENGTH.get().floatValue();
+            int threads = Math.round(7 * visual);
+            for (int i = 0; i < threads; i++) {
+                double t = i * 2.399963 + view.time * .084;
+                var base = new Vec3(side * .23 * Math.sin(t), -.14, 0);
+                var tip = new Vec3(side * (.40 + i % 4 * .29), (.12 + i % 5 * .22) * length, -.08);
+                arc(sparks, shadows, base, tip, new Vec3(0, 0, 3), view.time, 1, .28 + charge * .19, t);
+            }
+            if (HexConfig.HAND_PERIPHERAL.get()) {
+                motes(sparks, Math.round(28 * visual * HexConfig.HAND_PARTICLES.get().floatValue()), 1.4F,
+                        1.12F, view.time, .72F, 0);
+            }
+            if (spell == HexSpell.ORB && charge > .05F) {
+                glyph(sparks, .28F, .48F + charge * .23F, view.time * .08F, 7, charge, true);
+            } else if (spell == HexSpell.BARRIER && charge > .05F) {
+                glyph(sparks, .27F, .64F, -view.time * .05F, 6, charge * .7F, true);
+            }
+            float smoke = HexConfig.HAND_SMOKE.get().floatValue() * visual;
+            if (smoke > 0) {
+                view.cloud(pose, new Smoke(Vec3.ZERO, 1.08F, 1.24F, smoke * (.51F + charge * .19F),
+                        .57F + charge * .35F, side > 0 ? .29F : .72F));
+            }
+            pose.popPose();
         }
-        pose.popPose();
         view.flush();
+    }
+
+    private java.util.function.ToDoubleFunction<Point> handMask(PoseStack poses) {
+        var matrix = new org.joml.Matrix4f(handProjection).mul(poses.last().pose());
+        var clip = new org.joml.Vector4f();
+        return point -> {
+            matrix.transform(clip.set(point.x(), point.y(), point.z(), 1));
+            if (clip.w <= .07F) return 0;
+            float x = Math.abs(clip.x / clip.w), y = clip.y / clip.w;
+            float fade = Mth.lerp(HexConfig.HAND_FADE.get().floatValue(), 1, smooth((clip.w - .11F) / .35F));
+            if (!HexConfig.HAND_MASK.get()) return fade;
+            float edge = smooth((x - HexConfig.HAND_EXCLUSION.get().floatValue()) / .20F);
+            float lower = smooth((-y - .29F) / .31F);
+            return edge * lower * fade;
+        };
+    }
+
+    private static float smooth(float value) {
+        float t = Mth.clamp(value, 0, 1);
+        return t * t * (3 - 2 * t);
     }
 
     private int drawDistance() { return quality >= 6 ? 740 : quality >= 4 ? 460 : quality >= 2 ? 315 : 190; }
 
     private NailMesh mesh(boolean emissive) {
         return new NailMesh(pose, buffers.getBuffer(emissive ? HexMaterials.FILAMENT : HexMaterials.SHADE), emissive,
-                emissive ? glow : 1);
+                emissive ? handProjection == null ? glow : HexConfig.HAND_GLOW.get().floatValue() : 1,
+                handProjection == null ? null : handMask(pose));
     }
 
     private void begin(Vec3 at) {
@@ -134,7 +196,8 @@ final class HexRenderer {
                 pose.pushPose();
                 var hand = new Vec3(side * .57, 1.11, -.2).yRot(-yaw * Mth.DEG_TO_RAD);
                 pose.translate(hand.x, hand.y, hand.z);
-                pose.scale(.42F, .42F, .42F);
+                float size = .42F * HexConfig.WORLD_HAND_SCALE.get().floatValue();
+                pose.scale(size, size, size);
                 aura(mesh(true), mesh(false), eye.subtract(hand), (enhanced ? 1.35F : .72F) * show, side * 2);
                 pose.popPose();
                 smoke(owner.add(hand), .52F, .78F, .50F * show, .7F, side * .31F);
@@ -226,6 +289,16 @@ final class HexRenderer {
             begin(scene.origin());
             aura(mesh(true), mesh(false), origin.subtract(scene.origin()), .42F + r * .79F, scene.variant());
             smoke(scene.origin(), .74F + r * .50F, 1.1F + r * .35F, .64F, 1, .35F);
+        } else if (kind == HexNetwork.ORB_FX && scene.variant() == 1) {
+            float front = r * (1 - (1 - life) * (1 - life));
+            groundRing(light, at, Math.max(1, front), eye, alpha);
+            light.ring(.15F, Math.max(1, front * .71F), .25F, time * .035F, 96, 1, ROSE, alpha * .54F);
+            motes(light, count(160, HexConfig.DENSITY.get()), front, front * .55F, time, alpha, 0);
+            for (int i = 0; i < strands(9); i++) {
+                var end = polar(0, front * (.04 + .06 * (i % 4)), 0, front, i * 2.399963 + time * .023);
+                arc(light, dark, Vec3.ZERO, end, eye, time, 2, 1.2 + front * .06, i);
+            }
+            smoke(at.add(0, 1.3, 0), 1 + front * .48F, 1.6F + front * .32F, alpha * .75F, .82F, .39F);
         } else if (kind == HexNetwork.ORB_FX || kind == 6 + HexSpell.ORB.ordinal()) {
             float size = kind == HexNetwork.ORB_FX ? r : r * .6F;
             smoke(at, size * 1.2F, size * 1.2F, .90F * alpha, 1, .6F);
@@ -250,11 +323,21 @@ final class HexRenderer {
         } else if (kind >= 6 && kind < 6 + HexSpell.values().length) {
             switch (HexSpell.values()[kind - 6]) {
                 case TELEKINESIS -> {
-                    arc(light, dark, from, Vec3.ZERO, eye, time, strands(8), Math.max(.85, from.length() * .079), scene.variant() + .38);
+                    boolean local = Minecraft.getInstance().player != null
+                            && Minecraft.getInstance().options.getCameraType().isFirstPerson()
+                            && Minecraft.getInstance().player.getUUID().equals(scene.owner());
+                    var start = local ? from.lerp(Vec3.ZERO, .48) : from;
+                    arc(light, dark, start, Vec3.ZERO, eye, time, strands(local ? 3 : 8),
+                            Math.max(.35, start.length() * (local ? .032 : .079)), scene.variant() + .38);
                     aura(light, dark, eye, r, scene.variant());
                     smoke(at, 1.5F * r, 1.9F * r, .58F, .64F, .6F);
                 }
                 case REWRITE, GENESIS -> {
+                    if (scene.variant() == 1) {
+                        groundRing(light, at, r, eye, .54F);
+                        glyph(light, .18F, Math.min(2.5F, r * .3F), time * .028F, 6, .56F, false);
+                        break;
+                    }
                     float radius = r * Math.max(.12F, Mth.clamp(ticks / 21, 0, 1));
                     groundRing(light, at, radius, eye, .72F * alpha);
                     glyph(light, .42F, radius * .56F, time * .029F, kind == 7 ? 8 : 11, alpha, false);
@@ -470,11 +553,20 @@ final class HexRenderer {
         HexMaterials.prepare(time * .046F, quality);
         var out = buffers.getBuffer(HexMaterials.SMOKE);
         var matrix = pose.last().pose();
-        for (int corner = 0; corner < 4; corner++) {
-            int x = corner == 0 || corner == 3 ? 0 : 1, y = corner < 2 ? 0 : 1;
-            out.addVertex(matrix, (x * 2 - 1) * fog.width, (y * 2 - 1) * fog.height, 0)
-                    .setColor(fog.heat, 0, (fog.seed % 1 + 1) % 1, fog.alpha).setUv(x, y)
-                    .setOverlay(OverlayTexture.NO_OVERLAY).setLight(LightTexture.FULL_BRIGHT).setNormal(0, 0, 1);
+        var mask = handProjection == null ? null : handMask(pose);
+        int cells = mask == null ? 1 : 6;
+        for (int iy = 0; iy < cells; iy++) {
+            for (int ix = 0; ix < cells; ix++) {
+                for (int corner = 0; corner < 4; corner++) {
+                    float u = (ix + (corner == 0 || corner == 3 ? 0 : 1)) / (float) cells;
+                    float v = (iy + (corner < 2 ? 0 : 1)) / (float) cells;
+                    var point = new Point((u * 2 - 1) * fog.width, (v * 2 - 1) * fog.height, 0);
+                    float alpha = mask == null ? fog.alpha : fog.alpha * (float) mask.applyAsDouble(point);
+                    out.addVertex(matrix, point.x(), point.y(), point.z())
+                            .setColor(fog.heat, 0, (fog.seed % 1 + 1) % 1, alpha).setUv(u, v)
+                            .setOverlay(OverlayTexture.NO_OVERLAY).setLight(LightTexture.FULL_BRIGHT).setNormal(0, 0, 1);
+                }
+            }
         }
     }
 }

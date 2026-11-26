@@ -3,15 +3,28 @@ package io.github.xshoutgamer.minecraftmod.hex;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 public final class HexConfig {
+    public enum HandPreset { MINIMAL, BALANCED, CINEMATIC, CINEMATIC_OVERDRIVE }
+    public enum Rewrite { SCARLET, CRYSTALLINE, CELESTIAL, GOLDEN, OBSIDIAN, NATURAL, CUSTOM }
+    public static final ModConfigSpec.EnumValue<Rewrite> REWRITE;
+    public static final ModConfigSpec.ConfigValue<String> REWRITE_BLOCK;
+    public static final ModConfigSpec.IntValue REWRITE_RADIUS, REWRITE_DEPTH, REWRITE_SECONDS;
     public enum Target { LOOK, STATIONARY, FOLLOW, AURA }
 
     public static final ModConfigSpec SERVER, CLIENT;
+    public static final java.util.List<ModConfigSpec.EnumValue<HexSpell>> SHORTCUTS;
+    public static final ModConfigSpec.EnumValue<HandPreset> HAND_PRESET;
+    public static final ModConfigSpec.DoubleValue HAND_X, HAND_Y, HAND_SPACING, HAND_SCALE, HAND_PARTICLES, HAND_SMOKE,
+            HAND_GLOW, HAND_FADE, HAND_EXCLUSION, HAND_LENGTH, WORLD_HAND_SCALE;
+    public static final ModConfigSpec.BooleanValue HAND_MASK, HAND_ANIMATION, HAND_PERIPHERAL;
     public static final ModConfigSpec.EnumValue<Target> TARGET;
     public static final ModConfigSpec.IntValue RADIUS, ULTRA_RADIUS, EXPANSION, COLLAPSE, LIFE, COOLDOWN_PERCENT, TELEKINESIS_LIMIT,
             TELEKINESIS_RANGE, EDITS, RECORDS, TEMPORAL_TICKS, RUNE_RADIUS;
     public static final ModConfigSpec.BooleanValue EDIT, RECORD_NAIL, FLIGHT, GAMEPLAY, DEMO_ORBS;
     public static final ModConfigSpec.DoubleValue GRAVITY, RESISTANCE, VOLUME, DENSITY, SMOKE, TENDRILS, LIGHTNING, GLOW, FOG;
-    public static final ModConfigSpec.BooleanValue POST_EFFECTS;
+    public static final ModConfigSpec.BooleanValue POST_EFFECTS, ORB_PLAYERS, ORB_SELF, ORB_TERRAIN, TEMPORAL_FREEZE, ECHO_ATTACK, ECHO_GUARD, DEBUG;
+    public static final ModConfigSpec.IntValue ORB_CHARGE, ORB_RADIUS, ORB_MAX_RADIUS, ORB_ENHANCED_RADIUS, RUNE_LIFE,
+            TEMPORAL_RADIUS, GRAVITY_RADIUS, FIELD_LIMIT, ECHO_LIFE, ECHO_RANGE, GENESIS_RADIUS;
+    public static final ModConfigSpec.DoubleValue ORB_DAMAGE, ORB_PUSH, TEMPORAL_SLOW, RUNE_PROTECTION;
 
     static {
         var server = new ModConfigSpec.Builder();
@@ -25,6 +38,11 @@ public final class HexConfig {
         TELEKINESIS_LIMIT = server.defineInRange("telekinesisObjects", 3, 1, 12);
         TELEKINESIS_RANGE = server.defineInRange("telekinesisRange", 36, 6, 64);
         EDIT = server.comment("Allow operators or single-player hosts to rewrite ordinary terrain.").define("terrainRewrite", false);
+        REWRITE = server.defineEnum("rewritePreset", Rewrite.SCARLET);
+        REWRITE_BLOCK = server.define("rewriteCustomBlock", "minecraft:red_terracotta");
+        REWRITE_RADIUS = server.defineInRange("rewriteMaxRadius", 13, 2, 25);
+        REWRITE_DEPTH = server.defineInRange("rewriteDepth", 1, 1, 8);
+        REWRITE_SECONDS = server.comment("Zero leaves changes until Genesis restores them.").defineInRange("rewriteTemporarySeconds", 0, 0, 3600);
         RECORD_NAIL = server.comment("Record future Celestial Nail excavation for Genesis, within the journal limit.").define("recordNailExcavation", false);
         EDITS = server.defineInRange("terrainEditsPerTick", 24, 1, 128);
         RECORDS = server.defineInRange("restorationRecordsPerDimension", 8192, 64, 32768);
@@ -36,6 +54,28 @@ public final class HexConfig {
         RUNE_RADIUS = server.defineInRange("runeRadius", 9, 3, 24);
         TEMPORAL_TICKS = server.defineInRange("temporalTicks", 120, 20, 400);
         VOLUME = server.defineInRange("soundVolume", .85, 0, 2);
+        ORB_CHARGE = server.defineInRange("orbMaxChargeTicks", 45, 10, 200);
+        ORB_RADIUS = server.defineInRange("orbRadius", 8, 1, 24);
+        ORB_MAX_RADIUS = server.defineInRange("orbChargedRadius", 15, 1, 32);
+        ORB_ENHANCED_RADIUS = server.defineInRange("orbEnhancedRadius", 25, 1, 48);
+        ORB_DAMAGE = server.defineInRange("orbDamage", 16D, 0, 100);
+        ORB_PUSH = server.defineInRange("orbKnockback", 1.25, 0, 5);
+        ORB_PLAYERS = server.define("orbFriendlyFire", false);
+        ORB_TERRAIN = server.comment("Let operator orbs excavate bounded patches of natural terrain.").define("orbTerrain", false);
+        ORB_SELF = server.define("orbSelfDamage", false);
+        RUNE_LIFE = server.defineInRange("runeDurationSeconds", 180, 10, 3600);
+        RUNE_PROTECTION = server.defineInRange("protectionRuneDamageReduction", .65, 0, 1);
+        TEMPORAL_RADIUS = server.defineInRange("temporalRadius", 16, 3, 40);
+        TEMPORAL_SLOW = server.defineInRange("temporalSpeedMultiplier", .2, .05, .95);
+        TEMPORAL_FREEZE = server.define("temporalFreeze", false);
+        GRAVITY_RADIUS = server.defineInRange("gravityRadius", 14, 3, 40);
+        FIELD_LIMIT = server.defineInRange("fieldEntityLimit", 50, 1, 128);
+        ECHO_LIFE = server.defineInRange("echoDurationTicks", 240, 40, 2400);
+        ECHO_ATTACK = server.define("echoAttacks", true);
+        ECHO_GUARD = server.define("echoDeflectsProjectiles", true);
+        ECHO_RANGE = server.defineInRange("echoRange", 16, 4, 48);
+        GENESIS_RADIUS = server.defineInRange("genesisRadius", 38, 4, 150);
+        DEBUG = server.define("abilityDebug", false);
         SERVER = server.build();
 
         var client = new ModConfigSpec.Builder();
@@ -46,6 +86,27 @@ public final class HexConfig {
         GLOW = client.defineInRange("glow", 1D, 0, 2);
         FOG = client.defineInRange("atmosphericSaturation", .7, 0, 1);
         POST_EFFECTS = client.define("screenDistortion", false);
+        client.push("shortcuts");
+        SHORTCUTS = java.util.List.of(client.defineEnum("slot1", HexSpell.ORB),
+                client.defineEnum("slot2", HexSpell.BARRIER), client.defineEnum("slot3", HexSpell.TELEKINESIS));
+        client.pop();
+        client.push("firstPersonMagic");
+        HAND_PRESET = client.defineEnum("preset", HandPreset.CINEMATIC);
+        HAND_X = client.defineInRange("horizontalPosition", .69, .55, 1.02);
+        HAND_Y = client.defineInRange("verticalPosition", .68, .54, 1.02);
+        HAND_SPACING = client.defineInRange("handSpacing", 0D, -.18, .18);
+        HAND_SCALE = client.defineInRange("scale", 1D, .4, 1.55);
+        HAND_PARTICLES = client.defineInRange("particleDensity", 1D, 0, 2);
+        HAND_SMOKE = client.defineInRange("smokeOpacity", .72, 0, 1);
+        HAND_GLOW = client.defineInRange("glowIntensity", 1D, 0, 2);
+        HAND_FADE = client.defineInRange("cameraFade", 1D, 0, 1);
+        HAND_MASK = client.define("protectCrosshair", true);
+        HAND_EXCLUSION = client.defineInRange("centralExclusion", .48, .25, .70);
+        HAND_LENGTH = client.defineInRange("tendrilLength", 1D, .35, 1.55);
+        HAND_ANIMATION = client.define("castingAnimation", true);
+        HAND_PERIPHERAL = client.define("peripheralSparks", true);
+        client.pop();
+        WORLD_HAND_SCALE = client.defineInRange("thirdPersonHandScale", 1D, .5, 2);
         CLIENT = client.build();
     }
 

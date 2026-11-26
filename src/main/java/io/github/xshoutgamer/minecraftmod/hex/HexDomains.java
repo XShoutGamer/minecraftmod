@@ -19,6 +19,7 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 public final class HexDomains {
     private static final Map<MinecraftServer, Map<UUID, Domain>> WORLDS = new HashMap<>();
+    private static final Map<MinecraftServer, java.util.Set<UUID>> TEMPORAL = new HashMap<>();
 
     static final class Domain {
         final ResourceKey<Level> dimension;
@@ -86,6 +87,12 @@ public final class HexDomains {
 
     public static void tick(ServerTickEvent.Post event) {
         var server = event.getServer();
+        TEMPORAL.computeIfAbsent(server, key -> new java.util.HashSet<>()).clear();
+        if (server.getTickCount() % 20 == 0) {
+            for (var player : server.getPlayerList().getPlayers()) {
+                if (player.hasPermissions(2)) HexTerrain.get(player.serverLevel()).restoreExpired(player);
+            }
+        }
         var domains = WORLDS.get(server);
         if (domains == null) return;
         Iterator<Map.Entry<UUID, Domain>> iterator = domains.entrySet().iterator();
@@ -140,13 +147,33 @@ public final class HexDomains {
         sound(player, domain.center, MinecraftMod.HEX_COLLAPSE.get(), .8F, 1);
     }
 
+    static boolean silenced(ServerPlayer player) { return hasRune(player, true); }
+
+    private static boolean hasRune(ServerPlayer player, boolean silence) {
+        var active = WORLDS.get(player.getServer());
+        if (active == null) return false;
+        var players = player.getServer().getPlayerList();
+        for (var entry : active.entrySet()) {
+            var domain = entry.getValue();
+            var owner = players.getPlayer(entry.getKey());
+            if (owner != null && domain.empowered() && domain.gameplay()
+                    && domain.abilities.runeApplies(owner, player, silence)) return true;
+        }
+        return false;
+    }
+
     public static void adjustDamage(LivingDamageEvent.Pre event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         var domains = WORLDS.get(player.getServer());
         var domain = domains == null ? null : domains.get(player.getUUID());
-        if (domain != null && domain.gameplay() && domain.abilities.ascended) {
-            event.setNewDamage(event.getNewDamage() * (1 - HexConfig.RESISTANCE.get().floatValue()));
+        float multiplier = 1;
+        if (domain != null && domain.gameplay() && domain.abilities.ascended) multiplier -= HexConfig.RESISTANCE.get().floatValue();
+        if (hasRune(player, false)) {
+            multiplier *= 1 - HexConfig.RUNE_PROTECTION.get().floatValue();
+            scene(player, HexNetwork.BARRIER_FX, 2, player.position(), player.position().add(0, 1, 0),
+                    player.level().getGameTime(), 14, 2.25F);
         }
+        if (multiplier < 1) event.setNewDamage(event.getNewDamage() * multiplier);
     }
 
     public static void login(net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent event) {
@@ -157,7 +184,25 @@ public final class HexDomains {
         if (event.getEntity() instanceof ServerPlayer player) HexAbilities.resetFlight(player);
     }
 
-    public static void stop(ServerStoppedEvent event) { WORLDS.remove(event.getServer()); }
+    static void slow(ServerPlayer caster, net.minecraft.world.entity.Entity entity) {
+        TEMPORAL.computeIfAbsent(caster.getServer(), key -> new java.util.HashSet<>()).add(entity.getUUID());
+    }
+
+    public static void temporalTick(net.neoforged.neoforge.event.tick.EntityTickEvent.Pre event) {
+        var entity = event.getEntity();
+        if (!(entity.level() instanceof ServerLevel level)) return;
+        var affected = TEMPORAL.get(level.getServer());
+        if (affected == null || !affected.contains(entity.getUUID())) return;
+        int period = Math.max(2, (int) Math.round(1 / HexConfig.TEMPORAL_SLOW.get()));
+        if (HexConfig.TEMPORAL_FREEZE.get() || Math.floorMod(level.getServer().getTickCount() + entity.getId(), period) != 0) {
+            event.setCanceled(true);
+        }
+    }
+
+    public static void stop(ServerStoppedEvent event) {
+        WORLDS.remove(event.getServer());
+        TEMPORAL.remove(event.getServer());
+    }
 
     static void scene(ServerPlayer player, int kind, int variant, Vec3 origin, Vec3 target, long now, int duration, float radius) {
         broadcast(player.serverLevel(), player.getUUID(), kind, variant, origin, target, now, duration, radius);

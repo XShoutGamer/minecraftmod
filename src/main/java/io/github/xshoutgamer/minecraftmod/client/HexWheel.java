@@ -77,6 +77,8 @@ final class HexWheel extends Screen {
         var spell = SPELLS[hovered];
         gui.drawCenteredString(font, spell.title, cx, height - 39, 0xffffa5b8);
         gui.drawCenteredString(font, spell.description, cx, height - 25, 0xffead1d8);
+        if (available) gui.drawCenteredString(font, "Assign hovered spell with " + HexClient.shortcutHint(),
+                cx, height - 12, 0xffcf8ea0);
         if (!available) gui.drawCenteredString(font, "Available once the Hex establishes", cx, height - 12, 0xffcf8ea0);
     }
 
@@ -118,6 +120,11 @@ final class HexWheel extends Screen {
 
     @Override
     public boolean keyPressed(int key, int scanCode, int modifiers) {
+        int slot = HexClient.slotFor(key, scanCode);
+        if (slot >= 0) {
+            HexClient.assign(slot, SPELLS[hovered]);
+            return true;
+        }
         if (key == GLFW.GLFW_KEY_ESCAPE) commit = false;
         return super.keyPressed(key, scanCode, modifiers);
     }

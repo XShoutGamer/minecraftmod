@@ -57,6 +57,7 @@ public final class MinecraftMod {
         bus.addListener(NailCast::register);
         NeoForge.EVENT_BUS.addListener(NailCooldown::register);
         NeoForge.EVENT_BUS.addListener(HexDomains::tick);
+        NeoForge.EVENT_BUS.addListener(HexDomains::temporalTick);
         NeoForge.EVENT_BUS.addListener(HexDomains::adjustDamage);
         NeoForge.EVENT_BUS.addListener(HexDomains::stop);
         NeoForge.EVENT_BUS.addListener(HexDomains::login);

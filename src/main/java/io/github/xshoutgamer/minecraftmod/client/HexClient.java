@@ -34,12 +34,19 @@ public final class HexClient {
             GLFW.GLFW_KEY_N, "key.categories.minecraftmod");
     private static final KeyMapping SPELL = new KeyMapping("key.minecraftmod.hex_cast", InputConstants.Type.KEYSYM,
             GLFW.GLFW_KEY_V, "key.categories.minecraftmod");
+    private static final KeyMapping[] SHORTCUTS = {
+        shortcut(1, GLFW.GLFW_KEY_R), shortcut(2, GLFW.GLFW_KEY_F), shortcut(3, GLFW.GLFW_KEY_C)
+    };
     private static final Map<UUID, HexNetwork.Scene> DOMAINS = new LinkedHashMap<>();
     private static final Map<UUID, Long> LAST_SEEN = new LinkedHashMap<>();
     private static final LinkedHashMap<EffectKey, HexNetwork.Scene> EFFECTS = new LinkedHashMap<>();
     private static ClientLevel world;
     private static int held;
-    private static boolean consumed, casting;
+    private static boolean consumed;
+    private static final java.util.Set<KeyMapping> PRESSED = new java.util.HashSet<>();
+    private static KeyMapping castingKey;
+    private static HexSpell castingSpell;
+    private static float chargeBlend;
     static HexSpell selected = HexSpell.TELEKINESIS;
 
     private HexClient() {}
@@ -47,6 +54,40 @@ public final class HexClient {
     static void keys(RegisterKeyMappingsEvent event) {
         event.register(DOMAIN);
         event.register(SPELL);
+        for (var mapping : SHORTCUTS) event.register(mapping);
+    }
+
+    private static KeyMapping shortcut(int slot, int key) {
+        return new KeyMapping("key.minecraftmod.hex_slot_" + slot, InputConstants.Type.KEYSYM, key, "key.categories.minecraftmod");
+    }
+
+    static void assign(int slot, HexSpell spell) {
+        HexConfig.SHORTCUTS.get(slot).set(spell);
+        HexConfig.SHORTCUTS.get(slot).save();
+        Minecraft.getInstance().player.displayClientMessage(Component.literal(
+                SHORTCUTS[slot].getTranslatedKeyMessage().getString() + " → " + spell.title), true);
+    }
+
+    static int slotFor(int key, int scan) {
+        for (int i = 0; i < SHORTCUTS.length; i++) if (SHORTCUTS[i].matches(key, scan)) return i;
+        return -1;
+    }
+
+    static String shortcutHint() {
+        return java.util.Arrays.stream(SHORTCUTS).map(key -> key.getTranslatedKeyMessage().getString())
+                .collect(java.util.stream.Collectors.joining(" / "));
+    }
+
+    @SubscribeEvent
+    public static void reserveShortcut(ClientTickEvent.Pre event) {
+        var game = Minecraft.getInstance();
+        if (game.screen != null || !canCast()) return;
+        for (var shortcut : SHORTCUTS) {
+            if (shortcut.same(game.options.keySwapOffhand) && !shortcut.isUnbound()) {
+                while (game.options.keySwapOffhand.consumeClick()) {}
+                break;
+            }
+        }
     }
 
     public static void receive(HexNetwork.Scene scene) {
@@ -71,7 +112,9 @@ public final class HexClient {
         EFFECTS.clear();
         held = 0;
         consumed = false;
-        casting = false;
+        castingKey = null;
+        castingSpell = null;
+        PRESSED.clear();
     }
 
     @SubscribeEvent
@@ -108,24 +151,37 @@ public final class HexClient {
             consumed = false;
         }
 
-        boolean spellDown = SPELL.isDown();
-        boolean spellTap = SPELL.consumeClick();
-        while (SPELL.consumeClick()) {}
-        if (casting && (!spellDown || game.screen != null)) {
-            send(HexNetwork.RELEASE);
-            casting = false;
-        } else if (spellTap && !casting && game.screen == null) {
-            send(HexNetwork.PRESS);
-            casting = spellDown;
-            if (!casting) send(HexNetwork.RELEASE);
+        chargeBlend = Mth.clamp(chargeBlend + (castingKey == null ? -.16F : .12F), 0, 1);
+        if (castingKey != null && (!castingKey.isDown() || game.screen != null || !canCast())) {
+            send(HexNetwork.RELEASE, castingSpell);
+            castingKey = null;
+        }
+        castInput(SPELL, selected, game.screen == null);
+        for (int slot = 0; slot < SHORTCUTS.length; slot++) {
+            castInput(SHORTCUTS[slot], HexConfig.SHORTCUTS.get(slot).get(), game.screen == null);
         }
     }
 
-    private static void send(int action) {
+    private static void castInput(KeyMapping key, HexSpell spell, boolean allowed) {
+        if (!key.isDown()) PRESSED.remove(key);
+        if (!key.consumeClick()) return;
+        while (key.consumeClick()) {}
+        if (key.isDown() && !PRESSED.add(key)) return;
+        if (!allowed || castingKey != null || !canCast()) return;
+        send(HexNetwork.PRESS, spell);
+        if (!spell.sustained) return;
+        castingSpell = spell;
+        if (key.isDown()) castingKey = key;
+        else send(HexNetwork.RELEASE, spell);
+    }
+
+    private static void send(int action) { send(action, selected); }
+
+    private static void send(int action, HexSpell spell) {
         var connection = Minecraft.getInstance().getConnection();
         if (connection == null || !NetworkRegistry.hasChannel(connection, HexNetwork.Input.TYPE.id())) return;
         var quality = CelestiaConfig.QUALITY.get();
-        PacketDistributor.sendToServer(new HexNetwork.Input(action, selected.ordinal(),
+        PacketDistributor.sendToServer(new HexNetwork.Input(action, spell.ordinal(),
                 quality == CelestiaConfig.Quality.ULTRA_SCARLET || quality == CelestiaConfig.Quality.CINEMATIC_OVERDRIVE));
     }
 
@@ -176,7 +232,20 @@ public final class HexClient {
     @SubscribeEvent
     public static void hands(RenderHandEvent event) {
         var scene = own();
-        if (scene != null && scene.kind() != HexNetwork.COLLAPSING) HexRenderer.hands(event, casting);
+        if (scene != null && scene.kind() != HexNetwork.COLLAPSING) {
+            HexRenderer.hands(event, castingSpell, chargeBlend);
+        }
+    }
+
+    @SubscribeEvent
+    public static void arm(net.neoforged.neoforge.client.event.RenderArmEvent event) {
+        var scene = own();
+        if (scene == null || scene.kind() == HexNetwork.COLLAPSING || !HexConfig.HAND_ANIMATION.get()
+                || CelestiaConfig.REDUCED_MOTION.get() || !event.getPlayer().getMainHandItem().isEmpty()
+                || !event.getPlayer().getOffhandItem().isEmpty()) return;
+        float side = event.getArm() == net.minecraft.world.entity.HumanoidArm.RIGHT ? 1 : -1;
+        event.getPoseStack().translate(side * (.055 + chargeBlend * .045), -.042 - chargeBlend * .021, 0);
+        event.getPoseStack().mulPose(com.mojang.math.Axis.ZP.rotationDegrees(side * (6 + chargeBlend * 5)));
     }
 
     @SubscribeEvent
