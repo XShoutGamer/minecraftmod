@@ -94,8 +94,8 @@ public final class HexConfig {
         EDITS = server.defineInRange("terrainEditsPerTick", 24, 1, 128);
         CORRUPTION_EDITS = server.comment("Block edit budget per tick for each active Reality Rewrite corruption wave.")
                 .defineInRange("rewriteCorruptionEditsPerTick", 512, 1, 1024);
-        RECORD_LIMIT = server.comment("Undo records per dimension. Zero uses 262144 or a customized legacy limit.")
-                .defineInRange("terrainJournalLimit", 0, 0, 300000);
+        RECORD_LIMIT = server.comment("Undo records per dimension. Zero uses 5000000 or a customized legacy limit.")
+                .defineInRange("terrainJournalLimit", 0, 0, 5000000);
         LEGACY_RECORD_LIMIT = server.comment("Legacy journal limit. Set terrainJournalLimit to override it.")
                 .defineInRange("restorationRecordsPerDimension", 32768, 64, 300000);
         FLIGHT = server.define("ascensionFlight", true);
@@ -234,7 +234,7 @@ public final class HexConfig {
         int configured = RECORD_LIMIT.get();
         if (configured > 0) return Math.max(64, configured);
         int legacy = LEGACY_RECORD_LIMIT.get();
-        return legacy == 8192 || legacy == 32768 ? 262144 : legacy;
+        return legacy == 8192 || legacy == 32768 ? 5_000_000 : legacy;
     }
 
     private HexConfig() {}

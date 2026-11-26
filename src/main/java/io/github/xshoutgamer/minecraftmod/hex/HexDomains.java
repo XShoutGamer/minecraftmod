@@ -118,6 +118,7 @@ public final class HexDomains {
         var server = event.getServer();
         TEMPORAL.computeIfAbsent(server, key -> new java.util.HashSet<>()).clear();
         if (server.getTickCount() % 20 == 0) {
+            for (var level : server.getAllLevels()) HexTerrain.get(level).tickPermanence(level);
             for (var player : server.getPlayerList().getPlayers()) {
                 if (HexTerrain.canRestore(player)) HexTerrain.get(player.serverLevel()).restoreExpired(player);
             }

@@ -220,12 +220,21 @@ public final class Heavenfall {
         // Sample just inside the hit block so a strike on a face or edge follows the excavated column.
         double x = Math.clamp(impact.x, column.getX() + .001, column.getX() + .999);
         double z = Math.clamp(impact.z, column.getZ() + .001, column.getZ() + .999);
-        var top = new Vec3(x, impact.y + .001, z);
-        var bottom = new Vec3(x, level.getMinBuildHeight(), z);
-        var floor = level.clip(new ClipContext(top, bottom, ClipContext.Block.COLLIDER,
-                ClipContext.Fluid.NONE, net.minecraft.world.phys.shapes.CollisionContext.empty()));
-        double y = floor.getType() == HitResult.Type.BLOCK ? floor.getLocation().y : bottom.y;
-        return new Vec3(impact.x, Math.min(impact.y, y), impact.z);
+        var pos = new BlockPos.MutableBlockPos();
+        double localX = x - column.getX();
+        double localZ = z - column.getZ();
+        int startY = Math.min(level.getMaxBuildHeight() - 1, BlockPos.containing(impact).getY());
+        for (int y = startY; y >= level.getMinBuildHeight(); y--) {
+            pos.set(column.getX(), y, column.getZ());
+            var shape = level.getBlockState(pos).getCollisionShape(level, pos);
+            double top = Double.NEGATIVE_INFINITY;
+            for (var box : shape.toAabbs()) {
+                if (localX >= box.minX && localX <= box.maxX && localZ >= box.minZ && localZ <= box.maxZ
+                        && y + box.minY <= impact.y + .001) top = Math.max(top, y + box.maxY);
+            }
+            if (top != Double.NEGATIVE_INFINITY) return new Vec3(impact.x, Math.min(impact.y, top), impact.z);
+        }
+        return new Vec3(impact.x, level.getMinBuildHeight(), impact.z);
     }
 
     private boolean terrainPending() {

@@ -39,11 +39,45 @@ public final class HexTerrain extends SavedData {
     }
     private static final int HEAVENFALL_UPDATES = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
     private static final Factory<HexTerrain> FACTORY = new Factory<>(HexTerrain::new, HexTerrain::load);
+    private static final long PERMANENCE_DELAY = 10 * 60 * 20L;
     private final Map<BlockPos, Change> changes = new LinkedHashMap<>();
+    private final java.util.Set<BlockPos> expiring = new java.util.LinkedHashSet<>();
+    private long permanenceAt;
     private long reconstructionTick = Long.MIN_VALUE;
 
     static HexTerrain get(ServerLevel level) {
         return level.getDataStorage().computeIfAbsent(FACTORY, "minecraftmod_hex_terrain");
+    }
+
+    void tickPermanence(ServerLevel level) {
+        if (!makePermanentIfDue(level.getGameTime())) return;
+        var message = net.minecraft.network.chat.Component.literal("All world changes have become permanent");
+        for (var player : level.players()) player.sendSystemMessage(message);
+    }
+
+    boolean makePermanentIfDue(long now) {
+        if (changes.isEmpty()) {
+            if (permanenceAt != 0) {
+                permanenceAt = 0;
+                setDirty();
+            }
+            return false;
+        }
+        if (permanenceAt == 0) {
+            permanenceAt = now + PERMANENCE_DELAY;
+            setDirty();
+        }
+        if (now < permanenceAt) return false;
+        changes.clear();
+        expiring.clear();
+        permanenceAt = 0;
+        setDirty();
+        return true;
+    }
+
+    private void trackExpiration(BlockPos pos, Change change) {
+        if (change != null && change.expires > 0) expiring.add(pos);
+        else expiring.remove(pos);
     }
 
     private static boolean isWorldOwner(ServerPlayer player) {
@@ -120,9 +154,15 @@ public final class HexTerrain extends SavedData {
             if (!entry.getValue().owner.equals(owner)
                     || (radius > 0 && entry.getKey().distSqr(center) > radiusSquared)) continue;
             count += entry.getValue().previous == null ? 1 : 2;
-            if (confirm) entries.remove();
+            if (confirm) {
+                expiring.remove(entry.getKey());
+                entries.remove();
+            }
         }
-        if (confirm && count > 0) setDirty();
+        if (confirm && count > 0) {
+            if (changes.isEmpty()) permanenceAt = 0;
+            setDirty();
+        }
         return count;
     }
 
@@ -172,6 +212,7 @@ public final class HexTerrain extends SavedData {
             changes.remove(pos, record);
             return 0;
         }
+        trackExpiration(pos, record);
         setDirty();
         return 1;
     }
@@ -198,6 +239,7 @@ public final class HexTerrain extends SavedData {
             else changes.replace(pos, record, previous);
             return 0;
         }
+        trackExpiration(pos, record);
         setDirty();
         return 1;
     }
@@ -219,7 +261,9 @@ public final class HexTerrain extends SavedData {
             var change = entry.getValue();
             if (!owner.equals(change.owner)) continue;
             if (event.equals(change.event)) {
-                entry.setValue(change.expiresAt(now));
+                var updated = change.expiresAt(now);
+                entry.setValue(updated);
+                trackExpiration(entry.getKey(), updated);
                 result.addLast(entry.getKey());
             } else if (change.previous != null && event.equals(change.previous.event)) {
                 entry.setValue(new Change(change.owner, change.before, change.after, change.expires, change.event,
@@ -322,7 +366,9 @@ public final class HexTerrain extends SavedData {
             if (after == null) break;
             if (before.equals(after)) continue;
             if (!replace(player, pos, before, after)) break;
-            changes.put(pos, new Change(player.getUUID(), before, after, expires));
+            var record = new Change(player.getUUID(), before, after, expires);
+            changes.put(pos, record);
+            trackExpiration(pos, record);
             changed++;
         }
         if (changed > 0) setDirty();
@@ -396,6 +442,8 @@ public final class HexTerrain extends SavedData {
         if (!replace(player, pos, change.after, change.before, change.heavenfall ? HEAVENFALL_UPDATES : Block.UPDATE_ALL)) return false;
         if (change.previous == null) changes.remove(pos);
         else changes.put(pos, change.previous);
+        trackExpiration(pos, change.previous);
+        if (changes.isEmpty()) permanenceAt = 0;
         setDirty();
         return true;
     }
@@ -405,10 +453,9 @@ public final class HexTerrain extends SavedData {
         int normal = HexConfig.EDITS.get();
         int sovereign = Math.min(384, genesisBudget());
         var positions = new ArrayList<BlockPos>();
-        for (var entry : changes.entrySet()) {
-            var change = entry.getValue();
-            var pos = entry.getKey();
-            if (change.expires == 0 || change.expires > now || !change.owner.equals(player.getUUID())
+        for (var pos : expiring) {
+            var change = changes.get(pos);
+            if (change.expires > now || !change.owner.equals(player.getUUID())
                     || (change.event == null ? normal == 0 : sovereign == 0)
                     || !player.serverLevel().hasChunkAt(pos) || !player.level().getBlockState(pos).equals(change.after)) continue;
             positions.add(pos);
@@ -452,6 +499,7 @@ public final class HexTerrain extends SavedData {
             entries.add(entry);
         });
         tag.put("Changes", entries);
+        if (permanenceAt != 0) tag.putLong("PermanenceAt", permanenceAt);
         return tag;
     }
 
@@ -477,11 +525,16 @@ public final class HexTerrain extends SavedData {
 
     private static HexTerrain load(CompoundTag tag, HolderLookup.Provider registries) {
         var data = new HexTerrain();
+        data.permanenceAt = tag.getLong("PermanenceAt");
         var blocks = registries.lookupOrThrow(Registries.BLOCK);
         for (Tag item : tag.getList("Changes", Tag.TAG_COMPOUND)) {
             if (!(item instanceof CompoundTag entry)) continue;
             var change = loadChange(entry, blocks, false);
-            if (change != null) data.changes.put(BlockPos.of(entry.getLong("Pos")), change);
+            if (change != null) {
+                var pos = BlockPos.of(entry.getLong("Pos"));
+                data.changes.put(pos, change);
+                data.trackExpiration(pos, change);
+            }
         }
         return data;
     }
