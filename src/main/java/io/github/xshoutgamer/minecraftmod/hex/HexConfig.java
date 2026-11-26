@@ -6,7 +6,7 @@ public final class HexConfig {
     public enum HandPreset { MINIMAL, BALANCED, CINEMATIC, CINEMATIC_OVERDRIVE }
     public enum Volume { SPHERE, CYLINDER, TERRAIN, CUBE }
     public static final ModConfigSpec.EnumValue<Volume> VOLUME_SHAPE;
-    public static final ModConfigSpec.BooleanValue CORRUPTION_HOSTILE, CORRUPTION_FALLOFF;
+    public static final ModConfigSpec.BooleanValue CORRUPTION_FALLOFF;
     public static final ModConfigSpec.DoubleValue CORRUPTION_DAMAGE;
     public static final ModConfigSpec.IntValue CORRUPTION_TICKS;
     public static final ModConfigSpec.IntValue EXPAND_FIRST, EXPAND_SECOND, EXPAND_MAX, REWRITE_CHARGE;
@@ -160,7 +160,6 @@ public final class HexConfig {
         DISINTEGRATION_AREA = server.comment("Radius for crouch-cast disintegration. Set to zero for single-block only.")
                 .defineInRange("disintegrationAreaRadius", 2, 0, 3);
         DISINTEGRATION_DAMAGE = server.defineInRange("disintegrationDamage", 22D, 0, 100);
-        CORRUPTION_HOSTILE = server.define("corruptionHostileOnly", true);
         CORRUPTION_FALLOFF = server.define("corruptionDamageFalloff", true);
         CORRUPTION_DAMAGE = server.defineInRange("corruptionDamage", 5D, 0, 50);
         CORRUPTION_TICKS = server.defineInRange("corruptionEffectTicks", 100, 0, 600);

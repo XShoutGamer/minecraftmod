@@ -14,7 +14,6 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.item.FallingBlockEntity;
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
@@ -534,19 +533,19 @@ final class HexAbilities {
         if (domain.gameplay() && HexConfig.ECHO_ATTACK.get() && now % 15 == 0) {
             double range = HexConfig.ECHO_RANGE.get();
             var eye = echoPosition.add(0, 1.36, 0);
-            var hostile = level.getEntitiesOfClass(Mob.class, new AABB(eye, eye).inflate(range),
-                    mob -> mob instanceof Enemy && eligible(player, mob) && mob.distanceToSqr(eye) < range * range
+            var target = level.getEntitiesOfClass(Mob.class, new AABB(eye, eye).inflate(range),
+                    mob -> PersonalMagic.allowed(player, mob) && mob.distanceToSqr(eye) < range * range
                             && level.clip(new ClipContext(eye, mob.getEyePosition(), ClipContext.Block.COLLIDER,
                                     ClipContext.Fluid.NONE, player)).getType() == HitResult.Type.MISS)
                     .stream().min(java.util.Comparator.comparingDouble(mob -> mob.distanceToSqr(eye))).orElse(null);
-            if (hostile != null) {
-                hostile.hurt(level.damageSources().indirectMagic(player, player), (float) (4 * domain.scale()));
+            if (target != null) {
+                target.hurt(level.damageSources().indirectMagic(player, player), (float) (4 * domain.scale()));
                 if (now % 45 == 15) {
-                    hostile.knockback(.64, eye.x - hostile.getX(), eye.z - hostile.getZ());
+                    target.knockback(.64, eye.x - target.getX(), eye.z - target.getZ());
                 } else {
-                    hostile.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 24, 1, true, false));
+                    target.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 24, 1, true, false));
                 }
-                scene(player, HexNetwork.ORB_FX, 0, eye, hostile.getEyePosition(), now, 5, .54F);
+                scene(player, HexNetwork.ORB_FX, 0, eye, target.getEyePosition(), now, 5, .54F);
             }
         }
     }
@@ -612,7 +611,6 @@ final class HexAbilities {
         for (var mob : player.level().getEntitiesOfClass(Mob.class, new AABB(at, at).inflate(radius),
                 entity -> eligible(player, entity) && !player.isAlliedTo(entity)
                         && !(entity instanceof net.minecraft.world.entity.TamableAnimal pet && pet.isOwnedBy(player))
-                        && (!HexConfig.CORRUPTION_HOSTILE.get() || entity instanceof Enemy)
                         && HexTerrain.distance(workCenter, entity.blockPosition(), workShape) <= radius)) {
             if (!corrupted.add(mob.getUUID())) continue;
             float damage = HexConfig.CORRUPTION_DAMAGE.get().floatValue();
@@ -681,7 +679,7 @@ final class HexAbilities {
         candidates.sort(java.util.Comparator.comparingDouble(entity -> entity.distanceToSqr(center)));
         for (var entity : candidates.subList(0, Math.min(candidates.size(), HexConfig.FIELD_LIMIT.get()))) {
             if (variant < 0) {
-                if (entity instanceof Mob mob && !(mob instanceof Enemy)) continue;
+                if (entity instanceof Mob mob && !PersonalMagic.allowed(player, mob)) continue;
                 HexDomains.slow(player, entity);
                 continue;
             }

@@ -11,7 +11,6 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -19,9 +18,9 @@ import net.minecraft.world.phys.Vec3;
 final class DarkholdFields {
     private DarkholdFields() {}
 
-    static List<Mob> hostiles(ServerPlayer caster, Vec3 center, double radius) {
+    static List<Mob> nearbyMobs(ServerPlayer caster, Vec3 center, double radius) {
         var result = new ArrayList<>(caster.level().getEntitiesOfClass(Mob.class, new AABB(center, center).inflate(radius),
-                mob -> mob instanceof Enemy && PersonalMagic.allowed(caster, mob) && mob.distanceToSqr(center) < radius * radius));
+                mob -> PersonalMagic.allowed(caster, mob) && mob.distanceToSqr(center) < radius * radius));
         result.sort(Comparator.comparingDouble(mob -> mob.distanceToSqr(center)));
         return result.subList(0, Math.min(32, result.size()));
     }
@@ -43,7 +42,7 @@ final class DarkholdFields {
             entity.setDeltaMovement(entity.getDeltaMovement().scale(.42).add(motion));
             entity.hasImpulse = true;
             double damage = HexConfig.VOID_DAMAGE.get();
-            if (age % 10 == 0 && entity instanceof Mob mob && mob instanceof Enemy && distance < core && damage > 0
+            if (age % 10 == 0 && entity instanceof Mob mob && distance < core && damage > 0
                     && mob.hurt(caster.damageSources().indirectMagic(caster, caster),
                             (float) (damage * (.55 + charge * .45) * (1 - .75 * distance / core)))) damaged++;
         }
@@ -52,7 +51,7 @@ final class DarkholdFields {
 
     static int pulse(ServerPlayer caster, Vec3 center, double radius, float damage, boolean suppress, long now) {
         int affected = 0;
-        for (var mob : hostiles(caster, center, radius)) {
+        for (var mob : nearbyMobs(caster, center, radius)) {
             if (damage > 0) mob.hurt(caster.damageSources().indirectMagic(caster, caster), damage);
             if (suppress) mob.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 45, 1, true, false));
             if (affected++ < 8) {

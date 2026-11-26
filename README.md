@@ -27,9 +27,9 @@ Tap **N** to establish or dismiss the Hex. Hold **N** to open the spell wheel, p
 | Scarlet Ascension | Press **V** to toggle flight and damage resistance, subject to server settings. |
 | Reality Fracture | Press **V** to open a rift and travel to a validated landing spot. Crouch and press **V** to cycle between your crosshair and saved Teleportation Runes. |
 | Scarlet Runes | Aim and press **V** to place a rune. Crouch and press **V** to cycle Protection, Gravity, Silence, Restoration, and Teleportation. |
-| Temporal Authority | Press **V** to slow nearby hostile mobs, falling blocks, items, and projectiles locally. |
+| Temporal Authority | Press **V** to slow nearby mobs, falling blocks, items, and projectiles locally. |
 | Chaos Gravity Field | Press **V** to lift nearby entities. Crouch when casting to cycle the gravity modes. |
-| Astral Echo | Press **V** for a moving crimson projection. Crouch to anchor it in place. It attacks nearby hostile mobs in sight while the domain is active. |
+| Astral Echo | Press **V** for a moving crimson projection. Crouch to anchor it in place. It attacks nearby mobs in sight while the domain is active. |
 | Genesis | Aim at the altered area and press **V** to restore your recorded block changes. |
 | Scarlet World | Press **V** to expand the physical domain in stages to 150, 200, and 300 blocks from the default 100. The casting boost fades, and the expanded radius lasts until dismissal. |
 
@@ -50,7 +50,7 @@ The Orb defaults to an 8–15 block blast, or 25 blocks during Scarlet World. Pl
 - **X** channels Chaos Disintegration at a mob or block under your crosshair. The target must still be reachable when the channel finishes. Crouch while casting to channel a small block area. Block removal uses the Reality Rewrite permissions and is recorded for Genesis.
 - **R** opens the independent spell menu and **C** casts its selected power. It contains Chaos Flight, Personal Chaos Shield, Reality Step, Personal Telekinesis, and Chaos Projection. These powers work without a Hex.
 - Tap **J** to summon or dismiss the Darkhold. While it is summoned, hold **J** to open the grimoire. Click a spell, then press and release **K** to cast, or hold **K** for extra power. Crouch while casting Memory of Reality to restore a bounded batch of your recorded changes.
-- Darkhold spells include an anchored Dreamwalker flight, Abyssal Portal teleportation, orbiting Forbidden Guardians, a local Eternal Eclipse, Mirror Reality illusions, Void Singularity pull, an Astral Library sanctuary, Dimensional Prison for hostile mobs, Memory of Reality, and The Forbidden Scripture range boost.
+- Darkhold spells include an anchored Dreamwalker flight, Abyssal Portal teleportation, orbiting Forbidden Guardians, a local Eternal Eclipse, Mirror Reality illusions, Void Singularity pull, an Astral Library sanctuary, Dimensional Prison for mobs, Memory of Reality, and The Forbidden Scripture range boost.
 
 The default Reality Rewrite shape is a sphere. Set `rewriteVolume` to `CYLINDER`, `TERRAIN`, or `CUBE` for other shapes. Hold the spell to increase its radius from 6 blocks up to 60 blocks within `rewriteChargeTicks` by default. Set `rewriteVolumeMaxRadius` to override it. A customized legacy radius is honored when the new setting is zero. The Scarlet palette blackens logs and planks, removes foliage, and adds animated Scarlet-Fractured Stone. Mob corruption is separately configurable. Reality Rewrite has a maximum three-second cooldown at 20 TPS. Edits run in batches and stop at the per-dimension terrain journal limit. The default is 262,144 saved blocks, and worlds with the previous stock limits pick up the larger capacity automatically. Set `terrainJournalLimit` for a specific limit. Aim Genesis at earlier corrupted terrain to restore it and free its undo records.
 
@@ -62,9 +62,9 @@ Keep the spell selected after casting with **K**, then use **I** for its field a
 
 | Spell | Gameplay |
 | --- | --- |
-| Eternal Eclipse | Creates a local darkness field with hostile-mob pulses, personal healing and speed, damage reduction, projectile interception, and increased independent spell reach. **I** performs Shadow Passage to a safe point in the field. |
+| Eternal Eclipse | Creates a local darkness field with pulses that affect nearby mobs, personal healing and speed, damage reduction, projectile interception, and increased independent spell reach. **I** performs Shadow Passage to a safe point in the field. |
 | Mirror Reality | Creates a field in the current dimension. It reflects approaching projectiles near the caster. **I** links the origin to a safe targeted landing spot. Walk into a gate to travel. **Crouch + I** places temporary solid platforms where terrain edits are permitted. |
-| Void Singularity | Hold **K** to increase pull radius and damage. Its field pulls mobs, items, and supported projectiles. Hostile mobs take repeated damage near the core. |
+| Void Singularity | Hold **K** to increase pull radius and damage. Its field pulls mobs, items, and supported projectiles. Mobs take repeated damage near the core. |
 | Astral Library | Creates a sanctuary with a temporary placement-permitted platform, healing, and defense. **I** opens the altar for reach, duration, recovery, or restoration attunements. **Crouch + I** restores nearby journaled blocks. |
 | Forbidden Scripture | Manifests four formations for Dominion damage and slowing, Protection, Transcendence flight and speed, and Creation platforms with **I**. The default duration is 60 seconds before charge and attunement bonuses. |
 
@@ -75,8 +75,8 @@ Reality Rewrite corruption spreads with its visual wave. At 20 TPS, a quick cast
 - Tap **U** for a 60-block release. Hold **U** for the full 10-second cinematic charge to reach 150 blocks, then release when ready. The caster rises, draws in atmospheric currents, and manifests the crown and mantle. Open a menu to cancel. Set `transformationMode = "QUICK"` for the shorter six-second charge and its own score.
 - The default reign lasts two minutes. Set `durationMode` to `STANDARD` for 60 seconds or `UNLIMITED_CREATIVE` to keep it active until dismissal in Creative. Tap **U** during the reign to dismiss it.
 - The Scarlet Reality Wave changes eligible terrain, foliage, wood, and masonry out to 50 blocks by default, with separate limits for gameplay and atmosphere. Terrain edits use existing world permissions, protection checks, loaded chunks, and undo capacity. `terrainOnDismissal = "RESTORE"` restores the casting event by default. Use `PRESERVE` to keep the landscape journaled, then run `/hexterrain events` to find an event and `/hexterrain restore-event <id>` to restore it. Genesis can still target an area selectively. Player replacements and protected blocks are preserved.
-- **Shift + U** captures a targeted hostile, rebuilds a journaled area, builds a collidable bridge or platform near a surface, builds a platform in empty space, or summons a formation when looking upward. Hold an amethyst shard and use **Shift + U** on a clear surface to link two safe fracture gateways. Step away from a gateway and re-enter to travel.
-- During the reign, hostile mobs are captured by the release wave and new nearby threats can draw autonomous tendrils. Nearby captured mobs join layered orbits, hostile-owned projectiles are intercepted, and compatible Hex and personal spells gain reach and recover faster.
+- **Shift + U** captures a targeted mob, rebuilds a journaled area, builds a collidable bridge or platform near a surface, builds a platform in empty space, or summons a formation when looking upward. Hold an amethyst shard and use **Shift + U** on a clear surface to link two safe fracture gateways. Step away from a gateway and re-enter to travel.
+- During the reign, the release wave captures eligible mobs and autonomous tendrils can pursue nearby mobs. Nearby captured mobs join layered orbits, projectiles from eligible mobs are intercepted, and compatible Hex and personal spells gain reach and recover faster.
 - Enable `cinematicCamera` in the client config for a third-person pullback during the charge. The mantle, throne, optional release inversion, and `transformationVolume` are separate client settings. The full charge uses a 10-second edit of the supplied 0:35–0:59 excerpt from *Scarlet Witch Sound Effects (WandaVision)*, credited to jnmks in the source file. Quick mode uses the original six-second score.
 - Darkhold field actions default to **I**. If your Controls profile assigns them to **U**, rebind **Darkhold spell action** to **I**.
 

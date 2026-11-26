@@ -11,7 +11,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.phys.AABB;
@@ -513,7 +512,7 @@ public final class PersonalMagic {
                 if (now % 4 == 0) scene(player, GUARDIAN_FX, i, hand(player), guardian, now, 10, 1.2F);
                 if (now % 21 == i * 7) {
                     var target = level.getEntitiesOfClass(Mob.class, new AABB(guardian, guardian).inflate(12),
-                            mob -> mob instanceof Enemy && allowed(player, mob) && player.hasLineOfSight(mob))
+                            mob -> allowed(player, mob) && player.hasLineOfSight(mob))
                             .stream().min(java.util.Comparator.comparingDouble(mob -> mob.distanceToSqr(guardian))).orElse(null);
                     if (target != null) {
                         target.hurt(level.damageSources().indirectMagic(player, player), 5);
@@ -529,8 +528,7 @@ public final class PersonalMagic {
             var anchor = center;
             var entities = level.getEntities(player, new AABB(center, center).inflate(radius),
                     entity -> allowed(player, entity) && entity.distanceToSqr(anchor) < radius * radius
-                            && (entity instanceof Mob || entity instanceof ItemEntity)
-                            && (power != Power.PRISON || entity instanceof Enemy));
+                            && (entity instanceof Mob || power == Power.LIFT && entity instanceof ItemEntity));
             for (int i = 0; i < Math.min(48, entities.size()); i++) {
                 var entity = entities.get(i);
                 var goal = center.add(0, power == Power.LIFT ? 3 : 1, 0);

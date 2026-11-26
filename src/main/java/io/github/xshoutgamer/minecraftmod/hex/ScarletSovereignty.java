@@ -20,7 +20,6 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.phys.AABB;
@@ -227,8 +226,8 @@ public final class ScarletSovereignty {
     }
 
     private static boolean eligible(ServerPlayer player, Entity entity) {
-        return entity instanceof Enemy && entity instanceof Mob && entity.isAlive()
-                && !entity.isAlliedTo(player) && !(entity instanceof TamableAnimal);
+        return entity instanceof Mob && PersonalMagic.allowed(player, entity)
+                && !(entity instanceof TamableAnimal animal && animal.isTame());
     }
 
     private void catchMobs(ServerPlayer player, Vec3 at, double range, long now) {
@@ -333,8 +332,8 @@ public final class ScarletSovereignty {
         Vec3 target = ground ? hit.getLocation() : start.add(player.getLookAngle().scale(Math.min(radius, 48)));
         var mob = ProjectileUtil.getEntityHitResult(level, player, start, target, new AABB(start, target).inflate(1.5),
                 entity -> eligible(player, entity));
-        if (mob != null && mob.getEntity() instanceof Mob hostile) {
-            capture(player, hostile, now, HexConfig.SOVEREIGN_DAMAGE.get().floatValue());
+        if (mob != null && mob.getEntity() instanceof Mob targetMob) {
+            capture(player, targetMob, now, HexConfig.SOVEREIGN_DAMAGE.get().floatValue());
             cue(player, MinecraftMod.CHAOS_SOUND.get(), .8F, 1.15F);
             return;
         }
