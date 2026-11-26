@@ -186,7 +186,7 @@ public final class Heavenfall {
                     cue(player, MinecraftMod.SOVEREIGN_RELEASE.get(), 2.7F, .79F);
                     cue(player, MinecraftMod.IMPACT.get(), 2.5F, .65F);
                     if (editsTerrain) {
-                        crater = new HeavenfallTerrain(target.block, scale, event, true);
+                        crater = new HeavenfallTerrain(target.block, scale, event, true, sky);
                         corruption = new HeavenfallTerrain(target.block, scale, event, false);
                     }
                 }
