@@ -191,7 +191,7 @@ public final class HexConfig {
         LIGHTNING = client.defineInRange("lightningComplexity", 1D, 0, 3);
         GLOW = client.defineInRange("glow", 1D, 0, 2);
         FOG = client.defineInRange("atmosphericSaturation", .7, 0, 1);
-        POST_EFFECTS = client.define("screenDistortion", false);
+        POST_EFFECTS = client.define("screenDistortion", true);
         client.push("shortcuts");
         SHORTCUTS = java.util.List.of(client.defineEnum("slot1", HexSpell.ORB),
                 client.defineEnum("slot2", HexSpell.BARRIER), client.defineEnum("slot3", HexSpell.TELEKINESIS));
