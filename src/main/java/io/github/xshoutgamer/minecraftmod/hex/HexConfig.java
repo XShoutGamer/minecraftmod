@@ -191,7 +191,7 @@ public final class HexConfig {
         LIGHTNING = client.defineInRange("lightningComplexity", 1D, 0, 3);
         GLOW = client.defineInRange("glow", 1D, 0, 2);
         FOG = client.defineInRange("atmosphericSaturation", .7, 0, 1);
-        POST_EFFECTS = client.define("screenDistortion", true);
+        POST_EFFECTS = client.define("screenDistortion", false);
         client.push("shortcuts");
         SHORTCUTS = java.util.List.of(client.defineEnum("slot1", HexSpell.ORB),
                 client.defineEnum("slot2", HexSpell.BARRIER), client.defineEnum("slot3", HexSpell.TELEKINESIS));
@@ -204,7 +204,7 @@ public final class HexConfig {
         SOVEREIGN_AUDIO = client.defineInRange("transformationVolume", .82, 0, 1);
         SOVEREIGN_INVERSION = client.define("releaseInversion", false);
         client.pop();
-        HAND_PRESET = client.defineEnum("preset", HandPreset.CINEMATIC_OVERDRIVE);
+        HAND_PRESET = client.defineEnum("preset", HandPreset.CINEMATIC);
         HAND_X = client.defineInRange("horizontalPosition", .69, .55, 1.02);
         HAND_Y = client.defineInRange("verticalPosition", .68, .54, 1.02);
         HAND_SPACING = client.defineInRange("handSpacing", 0D, -.18, .18);

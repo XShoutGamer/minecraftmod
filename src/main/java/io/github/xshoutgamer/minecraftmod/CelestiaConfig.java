@@ -55,7 +55,7 @@ public final class CelestiaConfig {
         SERVER_SPEC = server.build();
 
         var client = new ModConfigSpec.Builder();
-        QUALITY = client.defineEnum("visualQuality", Quality.CINEMATIC_OVERDRIVE);
+        QUALITY = client.defineEnum("visualQuality", Quality.HIGH);
         PARTICLES = client.defineInRange("particleDensity", 1D, 0D, 2D);
         GLOW = client.defineInRange("glowIntensity", 1D, 0D, 1.5D);
         SHAKE = client.comment("Set to zero to disable camera movement.").defineInRange("cameraShakeIntensity", 0.55D, 0D, 1D);
