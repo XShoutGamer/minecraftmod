@@ -207,6 +207,18 @@ public final class HexDomains {
         if (multiplier < 1) event.setNewDamage(event.getNewDamage() * multiplier);
     }
 
+    static void revoke(ServerPlayer player) {
+        var domains = WORLDS.get(player.getServer());
+        var domain = domains == null ? null : domains.get(player.getUUID());
+        if (domain == null || domain.phase == HexNetwork.COLLAPSING) return;
+        if (player.serverLevel().dimension().equals(domain.dimension)) {
+            collapse(domain, player, player.level().getGameTime());
+        } else {
+            domain.abilities.clear(player);
+            domains.remove(player.getUUID());
+        }
+    }
+
     public static void login(net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) HexAbilities.resetFlight(player);
     }

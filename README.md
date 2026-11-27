@@ -12,6 +12,10 @@ The impact shockwave travels 100 blocks in one second at normal server speed. It
 
 Use a disposable world for the first cast. Install the same mod version on the server and participating clients.
 
+## Power access
+
+Players start with no access to Scarlet Witch abilities or the Celestial Nail, including in single-player. A level-2 operator or server console can use `/scarletwitch empower <playername>` to grant both and `/scarletwitch revoke <playername>` to remove both. Grants are saved by player UUID across server restarts and dimensions. Revocation ends active powers. Previous edits follow the existing terrain restoration rules. Grants do not confer operator permissions or override terrain protection. On a local world, enable commands to grant yourself access.
+
 ## Scarlet Hex
 
 Tap **N** to establish or dismiss the Hex. Hold **N** to open the spell wheel, point at a glyph, and release **N** to select it. **Esc** closes the wheel. **V** casts the selected spell. For a sustained spell, hold **V** and release it to finish. Both bindings are in Minecraft's Controls menu.

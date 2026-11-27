@@ -111,7 +111,7 @@ public final class HexClient {
         if (scene.kind() == PersonalMagic.BOOK_CLOSED) {
             EFFECTS.keySet().removeIf(key -> key.owner().equals(scene.owner()) && (key.kind() == PersonalMagic.BOOK_FX
                     || key.kind() == PersonalMagic.GUARDIAN_FX || key.kind() == PersonalMagic.POWER_FX
-                    && key.variant() >= PersonalMagic.Power.DREAM.ordinal()));
+                    && (scene.variant() == 1 || key.variant() >= PersonalMagic.Power.DREAM.ordinal())));
             return;
         }
         if (scene.kind() == ScarletSovereignty.PRESENCE && scene.variant() == ScarletSovereignty.Phase.INACTIVE.ordinal()) {

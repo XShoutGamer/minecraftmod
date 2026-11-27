@@ -6,6 +6,7 @@ import io.github.xshoutgamer.minecraftmod.hex.Heavenfall;
 import io.github.xshoutgamer.minecraftmod.hex.HexDomains;
 import io.github.xshoutgamer.minecraftmod.hex.HexTerrainCommands;
 import io.github.xshoutgamer.minecraftmod.hex.PersonalMagic;
+import io.github.xshoutgamer.minecraftmod.hex.ScarletAccess;
 import io.github.xshoutgamer.minecraftmod.hex.ScarletSovereignty;
 import io.github.xshoutgamer.minecraftmod.nail.NailCast;
 import io.github.xshoutgamer.minecraftmod.nail.NailCooldown;
@@ -71,6 +72,7 @@ public final class MinecraftMod {
         CelestialBlocks.register(bus);
         bus.addListener(NailCast::register);
         NeoForge.EVENT_BUS.addListener(NailCooldown::register);
+        NeoForge.EVENT_BUS.addListener(ScarletAccess::register);
         NeoForge.EVENT_BUS.addListener(HexTerrainCommands::register);
         NeoForge.EVENT_BUS.addListener(HexDomains::tick);
         NeoForge.EVENT_BUS.addListener(ScarletSovereignty::tick);

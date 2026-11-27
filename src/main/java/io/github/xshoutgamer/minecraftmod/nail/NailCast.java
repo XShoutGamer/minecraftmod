@@ -2,6 +2,7 @@ package io.github.xshoutgamer.minecraftmod.nail;
 
 import io.github.xshoutgamer.minecraftmod.CelestiaConfig;
 import io.github.xshoutgamer.minecraftmod.MinecraftMod;
+import io.github.xshoutgamer.minecraftmod.hex.ScarletAccess;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
@@ -27,7 +28,7 @@ public record NailCast() implements CustomPacketPayload {
     }
 
     private static void cast(ServerPlayer player) {
-        if (!player.isAlive() || player.isSpectator()) return;
+        if (!player.isAlive() || player.isSpectator() || !ScarletAccess.requirePowers(player)) return;
         var level = player.serverLevel();
         long now = level.getServer().overworld().getGameTime();
         boolean cooldownEnabled = NailCooldown.enabled(level.getServer());

@@ -28,16 +28,20 @@ public final class HexNetwork {
     public static void register(PayloadRegistrar registrar) {
         var optional = registrar.optional();
         optional.playToServer(Input.TYPE, Input.CODEC, (packet, context) -> {
-            if (context.player() instanceof ServerPlayer player) {
-                if (packet.action() >= PersonalMagic.QUICK && packet.action() <= PersonalMagic.LIBRARY_SELECT) PersonalMagic.input(player, packet);
-                else if (packet.action() >= ScarletSovereignty.PRESS && packet.action() <= ScarletSovereignty.DISMISS) {
-                    ScarletSovereignty.input(player, packet.action());
-                } else if (packet.action() >= Heavenfall.PRESS && packet.action() <= Heavenfall.CANCEL) {
-                    Heavenfall.input(player, packet.action());
-                } else HexDomains.input(player, packet);
-            }
+            if (context.player() instanceof ServerPlayer player) handleInput(player, packet);
         });
         optional.playToClient(Scene.TYPE, Scene.CODEC, (packet, context) -> HexClient.receive(packet));
+    }
+
+    static void handleInput(ServerPlayer player, Input packet) {
+        if (!ScarletAccess.requirePowers(player)) return;
+        int action = packet.action();
+        if (action >= PersonalMagic.QUICK && action <= PersonalMagic.LIBRARY_SELECT) PersonalMagic.input(player, packet);
+        else if (action >= ScarletSovereignty.PRESS && action <= ScarletSovereignty.DISMISS) {
+            ScarletSovereignty.input(player, action);
+        } else if (action >= Heavenfall.PRESS && action <= Heavenfall.CANCEL) {
+            Heavenfall.input(player, action);
+        } else HexDomains.input(player, packet);
     }
 
     public record Input(int action, int spell, boolean ultra) implements CustomPacketPayload {

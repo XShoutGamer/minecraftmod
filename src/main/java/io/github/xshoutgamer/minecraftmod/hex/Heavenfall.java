@@ -137,6 +137,13 @@ public final class Heavenfall {
 
     static void cancel(ServerPlayer player) { CHARGES.remove(player); }
 
+    static void revoke(net.minecraft.server.MinecraftServer server, UUID player) {
+        for (var level : server.getAllLevels()) {
+            var strikes = STRIKES.get(level);
+            if (strikes != null) strikes.removeIf(strike -> strike.caster.equals(player));
+        }
+    }
+
     public static void unload(net.neoforged.neoforge.event.level.LevelEvent.Unload event) {
         if (event.getLevel() instanceof ServerLevel level) {
             STRIKES.remove(level);

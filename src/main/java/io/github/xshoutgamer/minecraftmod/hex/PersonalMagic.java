@@ -567,13 +567,21 @@ public final class PersonalMagic {
 
     public static void logout(net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        clear(player);
+    }
+
+    static void revoke(ServerPlayer player) {
+        clear(player);
+        var pos = player.position();
+        scene(player, BOOK_CLOSED, 1, pos, pos, player.level().getGameTime(), 1, 0);
+    }
+
+    private static void clear(ServerPlayer player) {
+        var states = STATES.get(player.getServer());
+        var state = states == null ? null : states.remove(player.getUUID());
+        if (state != null) endDream(player, state);
         restoreFlight(player);
         syncSpeed(player, null);
-        var states = STATES.get(player.getServer());
-        if (states != null) {
-            var state = states.remove(player.getUUID());
-            if (state != null) endDream(player, state);
-        }
     }
 
     public static void stop(net.neoforged.neoforge.event.server.ServerStoppedEvent event) {

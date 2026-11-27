@@ -2,6 +2,7 @@ package io.github.xshoutgamer.minecraftmod.nail;
 
 import io.github.xshoutgamer.minecraftmod.CelestiaConfig;
 import io.github.xshoutgamer.minecraftmod.MinecraftMod;
+import io.github.xshoutgamer.minecraftmod.hex.ScarletAccess;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -145,6 +146,13 @@ public final class CelestialNail extends Entity {
     public void tick() {
         super.tick();
         if (!(level() instanceof ServerLevel level)) return;
+        if (ownerId != null && !ScarletAccess.hasPowers(level.getServer(), ownerId)) {
+            if (light != null && level.hasChunkAt(light) && level.getBlockState(light).is(net.minecraft.world.level.block.Blocks.LIGHT)) {
+                level.removeBlock(light, false);
+            }
+            discard();
+            return;
+        }
         int age = ++phaseTicks;
         if (phase() != Phase.EMBEDDED) entityData.set(AGE, age);
         entityData.set(PREVIOUS_Y, entityData.get(VISUAL_Y));
